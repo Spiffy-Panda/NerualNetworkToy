@@ -1,0 +1,8 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <ui:VisualElement>
+        <ui:VisualElement style="align-items: flex-start; height: 926px; width: 564.6667px; background-color: rgba(171, 171, 171, 255); justify-content: space-between;">
+            <ui:Slider picking-mode="Ignore" label="Slider" value="42" high-value="100" style="height: 201.6667px; width: 536.6666px;" />
+            <SpiffyLibrary.UIElements.BarycentricSlider style="height: 294px; width: 538px;" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
