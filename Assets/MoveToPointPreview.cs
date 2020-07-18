@@ -38,14 +38,14 @@ public class MoveToPointPreview : MonoBehaviour {
       _startAngle = _rndu.NextFloat(_stateMin.z, _stateMax.z);
     state.z = _startAngle;
     _Academy.PreviewBest(state,_targetPosition,_stateBuffer,_actBuffer);
-    _NetDraw._TestMLP = _Academy._BestBrain as MLP_4I_4H_4O;
+    _NetDraw._TestMLP = _Academy._BestBrain as MLP;
     _NetDraw.FindBounds();
   }
 
   Toughts _NetDraw => FindObjectOfType<Toughts>();
   public void Update() {
     float2 extState = _Academy.Observe(CurState, _targetPosition);
-    float2 intState = (CurrentIndex > 0) ? 0 : extState;
+    float2 intState = (CurrentIndex > 0) ? 0 : extState; 
     _NetDraw._observe = new float4(extState,intState);
     _NetDraw.SetAllDirty();
   }

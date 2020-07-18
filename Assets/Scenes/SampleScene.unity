@@ -154,11 +154,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 48670678}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c85b6543e11e7784ea481c76553120dc, type: 3}
+  m_Script: {fileID: 11500000, guid: e8829ecab07b18f48833570be32cea0c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   _iterations: 1000
-  _testPerRating: 100
+  _testPerRating: 25
   _dt: 0.01
   _bestMetrics:
     x: 0
@@ -166,7 +166,7 @@ MonoBehaviour:
     z: 0
   _bestCost: 0
   _initLearnRate: 2
-  _mutaLearnRate: 0.0115
+  _mutaLearnRate: 0.1
   _isGenerating: 1
   _isMutatingBest: 0
   _actionSpaceMin:
@@ -365,49 +365,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 4
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &311771287
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 311771289}
-  - component: {fileID: 311771288}
-  m_Layer: 0
-  m_Name: TensorTest
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &311771288
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 311771287}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f9ee4e6c268d9284aaaaab8a97cdc27d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!4 &311771289
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 311771287}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 345.4184, y: 428.71872, z: 667.0974}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_RootOrder: 5
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &366646423
 GameObject:

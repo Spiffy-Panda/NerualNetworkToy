@@ -1,17 +1,14 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
+﻿using NUnit.Framework;
 using Unity.Barracuda;
 using UnityEngine;
 
-public class TensorTest : MonoBehaviour {
-  public ReferenceComputeOps gpuOps;
+public class TensorTest
+{
 
-  public void Start() => RunTest();
-
-  [ContextMenu("RunTest")]
-  public void RunTest()
+  [Test]
+  public void ReferenceComputeOps_BasicTest()
   {
+    ReferenceComputeOps gpuOps;
     Debug.Log(ComputeShaderSingleton.Instance);
     gpuOps = new ReferenceComputeOps(ComputeShaderSingleton.Instance.referenceKernels);
     int[] shape = new[] { 2, 3, 5, 1 };
@@ -26,10 +23,12 @@ public class TensorTest : MonoBehaviour {
     X.Dispose();
     W.Dispose();
     Y.Dispose();
+    Debug.Assert(true); // Just getting here is good enough
   }
-  [ContextMenu("Allocator Test")]
-  public void RunAllocatorTest()
+  [Test]
+  public void TensorCachingAllocatorTest()
   {
+    ReferenceComputeOps gpuOps;
     Debug.Log(ComputeShaderSingleton.Instance);
     gpuOps = new ReferenceComputeOps(ComputeShaderSingleton.Instance.referenceKernels);
 
@@ -47,27 +46,28 @@ public class TensorTest : MonoBehaviour {
     X.Dispose();
     W.Dispose();
     Y.Dispose();
+    Debug.Assert(true); // Just getting here is good enough
   }
 
-  [ContextMenu("ModelBuilder")]
-  public void RunModelBuilderTest() {
+  [Test]
+  public void ModelBuilderTest()
+  {
 
     ModelBuilder mb = new ModelBuilder();
-    var inputLayer = mb.Input("Input", new int[] { -1, 1, 1, 4 });
-    Layer hiddenDenseLayer = mb.Dense("hidden1", inputLayer, new Tensor(new TensorShape(4, 4)), new Tensor(new TensorShape(1,4)));
+    Model.Input inputLayer = mb.Input("Input", new int[] { -1, 1, 1, 4 });
+    Layer hiddenDenseLayer = mb.Dense("hidden1", inputLayer, new Tensor(new TensorShape(4, 4)), new Tensor(new TensorShape(1, 4)));
     Layer hiddenActiveLayer = mb.Relu("hiddenAct", hiddenDenseLayer);
     Layer outputDenseLayer = mb.Dense("output", hiddenActiveLayer, new Tensor(new TensorShape(4, 4)), new Tensor(new TensorShape(1, 4)));
     Layer outputActiveLayer = mb.Relu("outputActive", outputDenseLayer);
     mb.Output(outputActiveLayer);
     IWorker worker = WorkerFactory.CreateWorker(mb.model, WorkerFactory.Device.GPU);
-    var ex = worker.Execute(new Tensor(new TensorShape(1, 1, 1, 4)));
+    IWorker ex = worker.Execute(new Tensor(new TensorShape(1, 1, 1, 4)));
     ex.FlushSchedule(true);
     Debug.Log(ex.PeekOutput());
+    Debug.Assert(true); // Just getting here is good enough
   }
 
-  // Update is called once per frame
-  void Update()
-    {
-        
-    }
 }
+
+
+

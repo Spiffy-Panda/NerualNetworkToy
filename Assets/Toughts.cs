@@ -47,16 +47,17 @@ public class Toughts : Graphic {
     // actually turbo, but jet is a common color map thats name stands out
     Func<float, Color> jet = TurboColorMap.Map;
     macroAddRect(0, 1, Color.gray);
-    
 
+    return; //TODO: when MLP_Tensor workes finish port function
 
     var mlp = _TestMLP;
     for (int iINode = 0; iINode < 4; iINode++) {
       macroAddRect(macGetNodePos(0, iINode), nodeSize, jet(math.unlerp(obsMin[iINode], obsMax[iINode], _observe[0])));
     }
 
-    float4 hv = mlp.GetHiddenValues(_observe, false)[0];
-    float4 hva = mlp.GetHiddenValues(_observe, true)[0];
+    // TODO: Replace with new hidden value check.
+    float4 hv = 1;// mlp.GetHiddenValues(_observe, false)[0];
+    float4 hva = 0;// mlp.GetHiddenValues(_observe, true)[0];
     hv = math.unlerp(hiddenBounds.c0, hiddenBounds.c1, hv);
     for (int iDim = 0; iDim < 4; iDim++)
     {
@@ -76,7 +77,7 @@ public class Toughts : Graphic {
       float2x2 R = float2x2.Rotate(math.atan2(dlt.y, dlt.x));
       float2x2 RS= math.mul(R,float2x2.Scale(S));
       Func<float2, float2> T2 = (vtx) => (math.mul(RS, vtx)  + T(u));
-
+       
       int vtxc = vh.currentVertCount;
       for (int iVtx = 0; iVtx < 4; iVtx++)
       {
@@ -89,29 +90,27 @@ public class Toughts : Graphic {
     }
 
     float2 xBuf = nodeSize/2;
-    xBuf.y = 0; 
+    xBuf.y = 0;  
     for (int iINode = 0; iINode < 4; iINode++)
     {
-      float4 tot = math.abs(mlp.weights_h1_i[0]) + math.abs(mlp.weights_h1_i[1]);
       for (int iWNode = 0; iWNode < 4; iWNode++)
       {
         float2 posI = macGetNodePos(0, iINode) + nodeSize / 2;
         float2 posW = macGetNodePos(1, iWNode) + nodeSize / 2;
 
-        float t = 0.5f + mlp.weights_h1_i[iINode][iWNode] / (2 * tot[iWNode]);
+        float t = 0.5f + mlp.GetWeight(1,iINode,iWNode) / (2);
 
         drwLine(posI+xBuf, posW -xBuf, 0.025f, jet(t));
       }
     }
     for (int iWNode = 0; iWNode < 4; iWNode++)
     {
-      float4 tot = math.abs(mlp.weights_o_h1[0]) + math.abs(mlp.weights_o_h1[1]);
       for (int iONode = 0; iONode < 4; iONode++)
       {
         float2 posW = macGetNodePos(1, iWNode) + nodeSize / 2;
         float2 posO = macGetNodePos(2, iONode) + nodeSize / 2;
 
-        float t = 0.5f + mlp.weights_o_h1[iWNode][iONode] / (2 * tot[iONode]);
+        float t = 0.5f + mlp.GetWeight(1, iWNode, iONode) ;
 
         drwLine(posW + xBuf, posO- xBuf, 0.025f, jet(t));
       }
@@ -142,15 +141,15 @@ public class Toughts : Graphic {
 
   public string _AgentJson = "";
   [ContextMenu("LoadAgent")]
-  public void LoadAgent() { _testMLP = JsonUtility.FromJson<MLP_4I_4H_4O>(_AgentJson); }
-  private MLP_4I_4H_4O _testMLP;
+  public void LoadAgent() { _testMLP = JsonUtility.FromJson<MLP>(_AgentJson); }
+  private MLP _testMLP;
 
 
-  public MLP_4I_4H_4O _TestMLP
+  public MLP _TestMLP
   {
     get {
       if (_testMLP == null) {
-        _testMLP = new MLP_4I_4H_4O();
+        _testMLP = new MLP_Tensor();
         Random _rndu = new Random((uint)UnityEngine.Random.Range(0, int.MaxValue));
         GaussianGenerator _rndn = new GaussianGenerator(_rndu);
         _testMLP.Mutate(ref _rndn, 1);
@@ -178,7 +177,8 @@ public class Toughts : Graphic {
       obs.xy = _rndu.NextFloat2(_obsMin, _obsMax);
       obs.zw = _rndu.NextFloat2(-2, 2);
 
-      float4 hv = mlp.GetHiddenValues(obs, true)[0];
+      // TODO: Get intermediate tensors;
+      float4 hv = 1;// mlp.GetHiddenValues(obs, true)[0];
       hbnds.c0 = math.min(hbnds.c0, hv);
       hbnds.c1 = math.max(hbnds.c1, hv);
 
