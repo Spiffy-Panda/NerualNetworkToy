@@ -1,4 +1,5 @@
-﻿using NUnit.Framework;
+﻿using System.Linq.Expressions;
+using NUnit.Framework;
 using Unity.Barracuda;
 using UnityEngine;
 
@@ -23,6 +24,7 @@ public class TensorTest
     X.Dispose();
     W.Dispose();
     Y.Dispose();
+    gpuOps.ResetAllocator(false);
     Debug.Assert(true); // Just getting here is good enough
   }
   [Test]
@@ -43,27 +45,49 @@ public class TensorTest
     Tensor Y = gpuOps.MatMul(X, false, W, false);
     Debug.Log($"Y WxH:{Y.flatHeight} {Y.flatWidth}");
     Debug.Log(X.data.GetType());
-    X.Dispose();
-    W.Dispose();
-    Y.Dispose();
+    tca.Dispose();
+    gpuOps.ResetAllocator(false);
     Debug.Assert(true); // Just getting here is good enough
+
   }
 
   [Test]
   public void ModelBuilderTest()
   {
-
+    TensorCachingAllocator tca = new TensorCachingAllocator();
     ModelBuilder mb = new ModelBuilder();
-    Model.Input inputLayer = mb.Input("Input", new int[] { -1, 1, 1, 4 });
-    Layer hiddenDenseLayer = mb.Dense("hidden1", inputLayer, new Tensor(new TensorShape(4, 4)), new Tensor(new TensorShape(1, 4)));
-    Layer hiddenActiveLayer = mb.Relu("hiddenAct", hiddenDenseLayer);
-    Layer outputDenseLayer = mb.Dense("output", hiddenActiveLayer, new Tensor(new TensorShape(4, 4)), new Tensor(new TensorShape(1, 4)));
-    Layer outputActiveLayer = mb.Relu("outputActive", outputDenseLayer);
-    mb.Output(outputActiveLayer);
+    Model.Input inputLayer = mb.Input("Input", new int[] { -1, 1, 1, 1 });
+    Layer prevLayer = null;
+    prevLayer = mb.Dense("hidden1", inputLayer, tca.Alloc(new TensorShape(1, 1)), tca.Alloc(new TensorShape(1, 1)));
+    prevLayer.weights[0] = 1;
+    prevLayer.weights[1] = 1;
+    Debug.Log(prevLayer.weights.Length + ": "+string.Join(",", prevLayer.weights));
+    for (int i = 0; i < prevLayer.datasets.Length; i++) {
+      Debug.Log(prevLayer.datasets[i].name +":"+ prevLayer.datasets[i].offset);
+      
+    }
+    prevLayer = mb.Identity("hiddenAct", prevLayer);
+    Debug.Log(prevLayer.weights.Length + ": " + string.Join(",", prevLayer.weights));
+    prevLayer = mb.Dense("output", prevLayer, tca.Alloc(new TensorShape(1, 1)), tca.Alloc(new TensorShape(1, 1)));
+    prevLayer.weights[0] = 3;
+    prevLayer.weights[1] = 5;
+    Debug.Log(prevLayer.weights.Length + ": " + string.Join(",", prevLayer.weights));
+    prevLayer = mb.Identity("outputActive", prevLayer);
+    Debug.Log(prevLayer.weights.Length + ": " + string.Join(",", prevLayer.weights));
+    mb.Output(prevLayer);
     IWorker worker = WorkerFactory.CreateWorker(mb.model, WorkerFactory.Device.GPU);
-    IWorker ex = worker.Execute(new Tensor(new TensorShape(1, 1, 1, 4)));
+    var input = tca.Alloc(new TensorShape(4, 1, 1, 1));
+    for (int i = 0; i < 4; i++) {
+      input[i] = i;
+    }
+    IWorker ex = worker.Execute(input);
     ex.FlushSchedule(true);
-    Debug.Log(ex.PeekOutput());
+    Tensor output = ex.PeekOutput();
+    for (int i = 0; i < 4; i++) {
+      Debug.Log($"output[i] = {output[i]}");
+    }
+    tca.Dispose();
+    ex.Dispose();
     Debug.Assert(true); // Just getting here is good enough
   }
 
