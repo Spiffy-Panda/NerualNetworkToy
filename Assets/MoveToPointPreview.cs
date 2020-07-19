@@ -4,6 +4,7 @@ using SpiffyLibrary;
 using SpiffyLibrary.MachineLearning;
 using Unity.Mathematics;
 using UnityEngine;
+using Unity.Barracuda;
 using Random = Unity.Mathematics.Random;
 
 [RequireComponent(typeof(PeriodicUpdate),typeof(AcademyMove))]
@@ -44,11 +45,14 @@ public class MoveToPointPreview : MonoBehaviour {
   }
 
   Toughts _NetDraw => FindObjectOfType<Toughts>();
+
   public void Update() {
-    float2 extState = _Academy.Observe(CurState, _targetPosition);
-    float2 intState = (CurrentIndex > 0) ? 0 : extState; 
-    _NetDraw._observe = new []{extState.x,extState.y,intState.x,intState.y};
+    Tensor obsTensor = new Tensor(new int[] {1, 1, 1, 4});
+
+    _Academy.Observe(ref obsTensor,CurState, _targetPosition);
+    _NetDraw._observe = obsTensor.ToReadOnlyArray();
     _NetDraw.SetAllDirty();
+    obsTensor.Dispose();
   }
 
   public void OnDrawGizmos() {

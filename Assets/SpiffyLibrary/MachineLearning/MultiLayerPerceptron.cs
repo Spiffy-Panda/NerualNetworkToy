@@ -66,7 +66,15 @@ namespace SpiffyLibrary.MachineLearning
       model = mb.model;
       tca.Dispose();
     }
-    public void Copy(MLP_Tensor other) { throw new NotImplementedException(); }
+
+    public void Copy(MLP_Tensor other)
+    {
+      for (int iLayer = 0; iLayer < model.layers.Count; iLayer++)
+      {
+        Debug.Assert(model.layers[iLayer].weights.Length == other.model.layers[iLayer].weights.Length);
+        Array.Copy(other.model.layers[iLayer].weights,model.layers[iLayer].weights,model.layers[iLayer].weights.Length);
+      }
+    }
 
     public void Clear()
     {

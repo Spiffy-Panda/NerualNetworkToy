@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using SpiffyLibrary;
 using SpiffyLibrary.MachineLearning;
+using Unity.Barracuda;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Assertions;
@@ -11,6 +12,7 @@ using Random = Unity.Mathematics.Random;
 
 [RequireComponent(typeof(EvaluationWeight))]
 public class AcademyMove : MonoBehaviour {
+  private TensorCachingAllocator _alloc;
   private GaussianGenerator _rndg = null;
   private Random _rndu;
   public int _iterations = 1000;
@@ -38,12 +40,13 @@ public class AcademyMove : MonoBehaviour {
   public float3 _stateMin = new float3(-5, -5, -math.PI);
   public float3 _stateMax = new float3( 5,  5,  math.PI);
   public void Start() {
+    _alloc = new TensorCachingAllocator();
     _rndu = new Random((uint) UnityEngine.Random.Range(0, int.MaxValue));
     _rndg = new GaussianGenerator(new Random((uint)UnityEngine.Random.Range(0, int.MaxValue)));
     _actBuffer = new float4[_iterations];
     
-    _bestBrain= new MLP_Tensor();
-    _otherBrain = new MLP_Tensor();
+    _bestBrain= new MLP_Tensor(activation:Layer.FusedActivation.Relu6);
+    _otherBrain = new MLP_Tensor(activation: Layer.FusedActivation.Relu6);
     _bestBrain.Mutate(ref _rndg,1);
     _bestMetrics=  Rate(_bestBrain);
     _bestCost = Cost(_bestMetrics);
@@ -62,7 +65,7 @@ public class AcademyMove : MonoBehaviour {
 
   private float3 Rate(MLP_Tensor brain, float3 state, float2 tgt)
   {
-    (float3 final, float3 closest)= Run(brain, state, tgt, null, _actBuffer);
+    (float3 final, float3 closest)= Run(brain.model, state, tgt, null, _actBuffer);
     float dst = math.length(tgt - state.xy);
     float closestDistance = math.length(tgt - closest.xy) / dst;
     float stoping = math.length(final.xy - tgt.xy) / dst;
@@ -71,45 +74,57 @@ public class AcademyMove : MonoBehaviour {
     return new float3(closestDistance, stoping, turning);
   }
 
-  public float2 Observe(float3 state, float2 tgt) {
-
-    float2 obs;
+  public void Observe(ref Tensor tensor, float3 state, float2 tgt) {
+    
     float2 dlt = tgt.xy - state.xy;
     float2 dir = new float2(math.cos(state.z), math.sin(state.z));
-    obs.x = math.atan2(dlt.y, dlt.x);
-    obs.y =math.clamp( math.dot(dlt, dir)/2,0,1);
-    return obs;
+    tensor[0,0] = math.atan2(dlt.y, dlt.x);
+    tensor[0,1] = math.clamp( math.dot(dlt, dir)/2,0,1);
   }
-  private (float3 final, float3 closest) Run(MLP_Tensor brain, float3 state, float2 tgt, float3[] stateBuffer = null, float4[] actBuffer = null)
+  private (float3 final, float3 closest) Run(Model model, float3 state, float2 tgt, float3[] stateBuffer = null, float4[] actBuffer = null)
   {
     Debug.Assert(stateBuffer == null || _iterations == stateBuffer.Length);
     Debug.Assert(actBuffer== null || _iterations == actBuffer.Length);
     float3 closest = state;
     float closestLength = math.length(tgt-state.xy);
-    float2 internState = 0;
-    for (int i = 0; i < _iterations; i++)
-    {
-      float2 obs = Observe(state,tgt);
-      float4 actIntern = 0;// brain.Execute(new float4(obs,internState));
-      float2 act = actIntern.xy;
-      internState = actIntern.zw;
-      float2 dir = new float2(math.cos(state.z), math.sin(state.z));
-      float dst = math.length(tgt - state.xy);
-      if ( dst < closestLength)
-      {
-        closestLength = dst ;
-        closest = state;
+    Tensor inTensor = _alloc.Alloc(new TensorShape(1, 4));
+    // internal State
+    inTensor[0, 2] = 0;
+    inTensor[0, 3] = 0; 
+
+    using (IWorker oneshotSyncWorker =
+      WorkerFactory.CreateWorker(model, WorkerFactory.Device.GPU)) {
+
+      for (int i = 0; i < _iterations; i++) {
+        Observe(ref inTensor, state, tgt);
+        oneshotSyncWorker.Execute(inTensor).FlushSchedule();
+        float2 act = 0;
+        using (Tensor outTensor = oneshotSyncWorker.PeekOutput())
+        {
+          act.x = outTensor[0,0];
+          act.y = outTensor[0,1];
+          inTensor[0, 2] = outTensor[0, 2];
+          inTensor[0, 3] = outTensor[0, 3];
+        }
+        float2 dir = new float2(math.cos(state.z), math.sin(state.z));
+        float dst = math.length(tgt - state.xy);
+        if (dst < closestLength) {
+          closestLength = dst;
+          closest = state;
+        }
+
+        act = math.clamp(act, _actionSpaceMin, _actionSpaceMax);
+
+
+        state.z += act.y * _dt;
+        state.xy += dir * act.x * _dt;
+        if (stateBuffer != null)
+          stateBuffer[i] = state;
+        if (actBuffer != null)
+          actBuffer[i] = new float4(act, inTensor[0, 2], inTensor[0, 3]);
       }
 
-      act = math.clamp(act, _actionSpaceMin, _actionSpaceMax);
-
-
-      state.z += act.y * _dt;
-      state.xy += dir * act.x * _dt;
-      if(stateBuffer != null)
-        stateBuffer[i] = state;
-      if (actBuffer != null)
-        actBuffer[i] = actIntern;
+      inTensor.Dispose();
     }
 
     return (state, closest);
@@ -141,7 +156,7 @@ public class AcademyMove : MonoBehaviour {
   {
     Debug.Assert(stateBuffer == null || stateBuffer.Length == _iterations);
     Debug.Assert(actBuffer== null || actBuffer.Length == _iterations);
-    Run(_bestBrain, state, target, stateBuffer, actBuffer);
+    Run(_bestBrain.model, state, target, stateBuffer, actBuffer);
   }
 
 }

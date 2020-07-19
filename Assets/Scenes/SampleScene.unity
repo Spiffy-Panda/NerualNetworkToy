@@ -158,7 +158,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _iterations: 1000
-  _testPerRating: 25
+  _testPerRating: 1
   _dt: 0.01
   _bestMetrics:
     x: 0
@@ -983,10 +983,11 @@ MonoBehaviour:
     x: -1
     y: 7
   _observe:
-    x: 0.51
-    y: 2.69
-    z: 0.5
-    w: 0.33
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
   _MLPJson: 
 --- !u!222 &1850507306
 CanvasRenderer:
