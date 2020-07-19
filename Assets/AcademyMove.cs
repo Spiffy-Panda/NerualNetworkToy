@@ -16,9 +16,9 @@ public class AcademyMove : MonoBehaviour {
   public int _iterations = 1000;
   public int _testPerRating = 25;
   public float _dt= 0.01f;
-  public MLP _BestBrain => _bestBrain;
-  private MLP _bestBrain;
-  private MLP _otherBrain;
+  public MLP_Tensor _BestBrain => _bestBrain;
+  private MLP_Tensor _bestBrain;
+  private MLP_Tensor _otherBrain;
   public float3 _bestMetrics;
   public float _bestCost;
   private float4[] _actBuffer;
@@ -49,7 +49,7 @@ public class AcademyMove : MonoBehaviour {
     _bestCost = Cost(_bestMetrics);
     GetComponent<EvaluationWeight>().ValueChanged+= () => _bestCost = Cost(_bestMetrics);
   }
-  private float3 Rate(MLP brain) {
+  private float3 Rate(MLP_Tensor brain) {
     float3 result = 0;
     for (int i = 0; i < _testPerRating; i++) {
       float3 state = _rndu.NextFloat3(_stateMin,_stateMax);
@@ -60,7 +60,7 @@ public class AcademyMove : MonoBehaviour {
   }
 
 
-  private float3 Rate(MLP brain, float3 state, float2 tgt)
+  private float3 Rate(MLP_Tensor brain, float3 state, float2 tgt)
   {
     (float3 final, float3 closest)= Run(brain, state, tgt, null, _actBuffer);
     float dst = math.length(tgt - state.xy);
@@ -80,7 +80,7 @@ public class AcademyMove : MonoBehaviour {
     obs.y =math.clamp( math.dot(dlt, dir)/2,0,1);
     return obs;
   }
-  private (float3 final, float3 closest) Run(MLP brain, float3 state, float2 tgt, float3[] stateBuffer = null, float4[] actBuffer = null)
+  private (float3 final, float3 closest) Run(MLP_Tensor brain, float3 state, float2 tgt, float3[] stateBuffer = null, float4[] actBuffer = null)
   {
     Debug.Assert(stateBuffer == null || _iterations == stateBuffer.Length);
     Debug.Assert(actBuffer== null || _iterations == actBuffer.Length);

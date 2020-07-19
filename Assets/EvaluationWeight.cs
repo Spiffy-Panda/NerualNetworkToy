@@ -7,7 +7,7 @@ using UnityEngine;
 public class EvaluationWeight : MonoBehaviour
 {
   [SerializeField]
-  private BarycentricSlider _ratingWeightUi;
+  private BarycentricSlider _ratingWeightUi = null;
   [SerializeField]
   private  float3 _inspectorWeight = 1;
 

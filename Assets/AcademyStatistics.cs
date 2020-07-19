@@ -29,7 +29,7 @@ public class AcademyStatistics : MonoBehaviour
   {
     _bestHistory.Add(metrics);
 
-    var mlp = _Academy._BestBrain as MLP;
+    var mlp = _Academy._BestBrain as MLP_Tensor;
     _AgentJson = JsonUtility.ToJson(mlp);
   }
 

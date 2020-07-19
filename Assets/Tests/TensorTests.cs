@@ -1,8 +1,9 @@
 ﻿using NUnit.Framework;
+using SpiffyLibrary;
 using SpiffyLibrary.MachineLearning;
 using Unity.Barracuda;
 using UnityEngine;
-
+using Random = Unity.Mathematics.Random;
 public class TensorTest
 {
 
@@ -213,6 +214,18 @@ public class TensorTest
     tca.Dispose();
     ex.Dispose();
     Debug.Assert(true);
+  }
+  [Test]
+  public void GaussianTest() {
+
+    Random _rndu = new Random((uint)UnityEngine.Random.Range(0, int.MaxValue));
+    GaussianGenerator _rndn = new GaussianGenerator(_rndu);
+    for (int iCnt = 0; iCnt < 100; iCnt++) {
+      float val = _rndn.NextFloat1();
+      Debug.Log(val);
+      Debug.Assert(!float.IsNaN(val));
+    }
+    
   }
 }
 

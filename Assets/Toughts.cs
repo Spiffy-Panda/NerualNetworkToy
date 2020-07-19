@@ -1,195 +1,186 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Transactions;
-using SpiffyLibrary;
+﻿using SpiffyLibrary;
 using SpiffyLibrary.MachineLearning;
+using System;
+using Unity.Barracuda;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.UIElements;
 using Random = Unity.Mathematics.Random;
 
-public class Toughts : Graphic {
-  private MoveToPointPreview _preview;
-  private AcademyMove _academy;
+public class Toughts : Graphic
+{
+  private readonly MoveToPointPreview _preview;
+  private readonly AcademyMove _academy;
 
-  protected override void OnPopulateMesh(VertexHelper vh) {
-    base.OnPopulateMesh(vh);
-    vh.Clear();
-    float2x4 rBase = new float2x4(0,1,1,0,
-                                    0,0,1,1);
-    float2 rectScale = rectTransform.rect.size;
-    float2 rectPos = rectTransform.rect.position;
-    float aspect = rectTransform.rect.width / rectTransform.rect.height;
-    Func<float2,float2> T = (vtx) => (rectScale * vtx + rectPos);
-    void macroAddRect(float2 pos, float2 size, Color clr)
-    {
-      int vtxc= vh.currentVertCount;
-      for (int iVtx = 0; iVtx < 4; iVtx++)
-      {
-        vh.AddVert((Vector2)T( size*rBase[iVtx] + pos), clr, Vector2.zero);
+  // we are using relu6
+  public float2 _actNodeMinMax = new float2(0, 6);
+  // just enough to show overflow
+  public float2 _rawNodeMinMax = new float2(-1, 7);
+  public float[] _observe = new float[]{.5f, .33f, .5f, .33f,0.1f};
 
-      }
-      vh.AddTriangle(vtxc+0, vtxc+1, vtxc+ 2);
-      vh.AddTriangle(vtxc+3, vtxc+0, vtxc+2);
-    }
-    void drwLine(float2 u, float2 v, float width, Color clr) {
+  private static readonly float2x4 RectCourners = new float2x4(0, 1, 1, 0, 0, 0, 1, 1);
 
-      float2 dlt = v - u;
-      float2 S = new float2(math.length(rectScale * dlt), math.cmin(rectScale) * width);
-      dlt = rectScale * dlt;
-      float2x2 R = float2x2.Rotate(math.atan2(dlt.y, dlt.x));
-      float2x2 RS= math.mul(R,float2x2.Scale(S));
-      Func<float2, float2> T2 = (vtx) => (math.mul(RS, vtx)  + T(u));
-       
-      int vtxc = vh.currentVertCount;
-      for (int iVtx = 0; iVtx < 4; iVtx++)
-      {
-        vh.AddVert((Vector2)T2(rBase[iVtx]-new float2(0,0.5f)), clr, Vector2.zero);
+  private readonly string[] _extraLayers = new string[] {
+    MLP_Tensor.LayerNames.Hidden,
+    MLP_Tensor.LayerNames.HiddenActive,
+    MLP_Tensor.LayerNames.Output
+  };
 
-      }
-      vh.AddTriangle(vtxc + 0, vtxc + 1, vtxc + 2);
-      vh.AddTriangle(vtxc + 3, vtxc + 0, vtxc + 2);
+  float2 NodeSize => new float2(0.2f / (RectScale.x/RectScale.y), 0.2f);
+  private float2 RectScale => rectTransform.rect.size;
 
-    }
+  private float2 RectPos => rectTransform.rect.position;
 
-    int hiddenLayerCount = 1;
+  Color RawNodeColor(float r) => TurboColorMap.Map(math.unlerp(_rawNodeMinMax.x, _rawNodeMinMax.y, r));
+  Color ActNodeColor(float a) => TurboColorMap.Map(math.unlerp(_actNodeMinMax.x, _actNodeMinMax.y, a));
 
-    float2 nodeSize = new float2(0.2f/aspect, 0.2f);
-    float2 macGetNodePos(int layer, int idx) {
-      float2 usable = 1 - nodeSize;
-      float2 nPos;
-      nPos.x = layer / (2f + hiddenLayerCount - 1); //hidden + input and output
-      nPos.y = 1- idx / 3f;
-      return usable * nPos;
-    }
+  public string _MLPJson = "";
 
-    // actually turbo, but jet is a common color map thats name stands out
-    Func<float, Color> jet = TurboColorMap.Map;
-    macroAddRect(0, 1, Color.gray);
-
-    return; //TODO: when MLP_Tensor workes finish port function
-
-    var mlp = _TestMLP;
-    for (int iINode = 0; iINode < 4; iINode++) {
-      macroAddRect(macGetNodePos(0, iINode), nodeSize, jet(math.unlerp(obsMin[iINode], obsMax[iINode], _observe[0])));
-    }
-
-    // TODO: Replace with new hidden value check.
-    float4 hv = 1;// mlp.GetHiddenValues(_observe, false)[0];
-    float4 hva = 0;// mlp.GetHiddenValues(_observe, true)[0];
-    hv = math.unlerp(hiddenBounds.c0, hiddenBounds.c1, hv);
-    for (int iDim = 0; iDim < 4; iDim++)
-    {
-      macroAddRect(macGetNodePos(1, iDim), nodeSize, jet(hv[iDim]));
-      macroAddRect(macGetNodePos(1, iDim)+ nodeSize / 4, nodeSize/2, jet(hva[iDim]));
-    }
-
-    float4 ov = math.unlerp(outBounds.c0, outBounds.c1, 0);
-    for (int iONode = 0; iONode < 4; iONode++)
-      macroAddRect(macGetNodePos(2, iONode), nodeSize, jet(ov[iONode]));
-
-
-    float2 xBuf = nodeSize/2;
-    xBuf.y = 0;  
-    for (int iINode = 0; iINode < 4; iINode++)
-    {
-      for (int iWNode = 0; iWNode < 4; iWNode++)
-      {
-        float2 posI = macGetNodePos(0, iINode) + nodeSize / 2;
-        float2 posW = macGetNodePos(1, iWNode) + nodeSize / 2;
-
-        float t = 0.5f + mlp.GetWeight(MLP_Tensor.LayerNames.Hidden ,iINode,iWNode) / (2);
-
-        drwLine(posI+xBuf, posW -xBuf, 0.025f, jet(t));
-      }
-    }
-    for (int iWNode = 0; iWNode < 4; iWNode++)
-    {
-      for (int iONode = 0; iONode < 4; iONode++)
-      {
-        float2 posW = macGetNodePos(1, iWNode) + nodeSize / 2;
-        float2 posO = macGetNodePos(2, iONode) + nodeSize / 2;
-
-        float t = 0.5f + mlp.GetWeight("output", iWNode, iONode) ;
-
-        drwLine(posW + xBuf, posO- xBuf, 0.025f, jet(t));
-      }
-    }
-    /*
-    var midPoint = testU / 2 + testV / 2;
-    drwLine(testU, testV, 0.05f, Color.red);
-    drwLine(midPoint, testV, 0.05f, Color.green);
-    drwLine(testU,testU / 2 + testV / 2, 0.05f, Color.blue);
-    float2 ps = 0.025f;
-    ps.x /= aspect;
-    macroAddRect(testU-ps/2, ps, Color.cyan);
-    macroAddRect(testV - ps / 2, ps, Color.yellow);
-    macroAddRect(midPoint - ps / 2, ps, Color.magenta);
-    */
-  }
-
-  public float2 testU = new float2(0, 0.3f);
-  public float2 testV = new float2(0.1f, 0.1f);
-  public float2 _obsMin = new float2(-Mathf.PI, 0);
-  public float2 _obsMax = new float2(Mathf.PI,5);
-  public float4 obsMin => new float4(_obsMin, outBounds.c0.zw);
-  public float4 obsMax => new float4(_obsMax, outBounds.c1.zw);
-  public float4x2 hiddenBounds = 0;
-  public float4x2 outBounds = 0;
-  public float4 _observe = new float4(.5f, .33f, .5f, .33f);
-
-
-  public string _AgentJson = "";
   [ContextMenu("LoadAgent")]
-  public void LoadAgent() { _testMLP = JsonUtility.FromJson<MLP>(_AgentJson); }
-  private MLP _testMLP;
-
-
-  public MLP _TestMLP
+  public void LoadAgent()
   {
-    get {
-      if (_testMLP == null) {
-        _testMLP = new MLP_Tensor();
-        Random _rndu = new Random((uint)UnityEngine.Random.Range(0, int.MaxValue));
-        GaussianGenerator _rndn = new GaussianGenerator(_rndu);
-        _testMLP.Mutate(ref _rndn, 1);
+    throw new NotImplementedException();
+  } 
+  private MLP_Tensor _testMLP;
+
+
+  public MLP_Tensor _TestMLP
+  {
+    get
+    {
+      if (_testMLP == null)
+      {
+        _testMLP = new MLP_Tensor(5, 4, 2, Layer.FusedActivation.Relu6);
+        Random rndu = new Random((uint)UnityEngine.Random.Range(0, int.MaxValue));
+        GaussianGenerator rndn = new GaussianGenerator(rndu);
+        _testMLP.Mutate(ref rndn, 1);
       }
       return _testMLP;
     }
-    set { _testMLP = value; }
+  }
+  private void AddRect(VertexHelper vh, float2 pos, float2 size, Color clr)
+  {
+    Func<float2, float2> T = (vtx) => (RectScale * vtx + RectPos);
+    int vtxc = vh.currentVertCount;
+    for (int iVtx = 0; iVtx < 4; iVtx++)
+    { 
+      vh.AddVert((Vector2)T(size * RectCourners[iVtx] + pos), clr, Vector2.zero);
+
+    }
+    vh.AddTriangle(vtxc + 0, vtxc + 1, vtxc + 2);
+    vh.AddTriangle(vtxc + 3, vtxc + 0, vtxc + 2);
+  }
+
+  private void DrawLine(VertexHelper vh, float2 u, float2 v, float width, Color clr)
+  {
+
+    float2 dlt = v - u;
+    float2 S = new float2(math.length(RectScale * dlt), math.cmin(RectScale) * width);
+    dlt = RectScale * dlt;
+    float2x2 R = float2x2.Rotate(math.atan2(dlt.y, dlt.x));
+    float2x2 RS = math.mul(R, float2x2.Scale(S));
+    Func<float2, float2> T = (vtx) => (RectScale * vtx + RectPos);
+    Func<float2, float2> T2 = (vtx) => (math.mul(RS, vtx) + T(u));
+
+    int vtxc = vh.currentVertCount;
+    for (int iVtx = 0; iVtx < 4; iVtx++)
+    {
+      vh.AddVert((Vector2)T2(RectCourners[iVtx] - new float2(0, 0.5f)), clr, Vector2.zero);
+
+    }
+    vh.AddTriangle(vtxc + 0, vtxc + 1, vtxc + 2);
+    vh.AddTriangle(vtxc + 3, vtxc + 0, vtxc + 2);
+
+  }
+  private float2 GetNodePos(int layer, int idx)
+  {
+    int[] layerSizes = new int[] { _TestMLP._inputSize, _TestMLP._hiddenSize, _TestMLP._outputSize };
+    float2 usable = 1 - NodeSize;
+    float2 nPos;
+    nPos.x = layer / (2f);
+    nPos.y = 1 - idx / (layerSizes[layer] - 1f);
+    return usable * nPos;
+  }
+  protected override void OnPopulateMesh(VertexHelper vh)
+  {
+    base.OnPopulateMesh(vh);
+    vh.Clear();
+    MLP_Tensor mlp = _TestMLP;
+    AddRect(vh, 0, 1, Color.gray);
+
+    using (IWorker oneshotSyncWorker =
+      WorkerFactory.CreateWorker(_testMLP.model, _extraLayers, WorkerFactory.Device.GPU)) {
+
+      using (Tensor obsTensor = new Tensor(new TensorShape(1, mlp._inputSize)))
+      {
+        if(_observe.Length < mlp._inputSize)
+          _observe = new float[mlp._inputSize]; 
+        for (int iINode = 0; iINode < mlp._inputSize; iINode++)
+        {
+          obsTensor[iINode] = _observe[iINode];
+        }
+        oneshotSyncWorker.Execute(obsTensor).FlushSchedule();
+      }
+      for (int iINode = 0; iINode < mlp._inputSize; iINode++)
+      {
+        AddRect(vh, GetNodePos(0, iINode), NodeSize, ActNodeColor(_observe[iINode]));
+      }
+
+      
+      using (Tensor hvr = oneshotSyncWorker.PeekOutput(MLP_Tensor.LayerNames.Hidden))
+      {
+        using (Tensor hva = oneshotSyncWorker.PeekOutput(MLP_Tensor.LayerNames.HiddenActive))
+        {
+          for (int iHNode = 0; iHNode < mlp._hiddenSize; iHNode++)
+          {
+            AddRect(vh, GetNodePos(1, iHNode), NodeSize, RawNodeColor(hvr[iHNode]));
+            AddRect(vh, GetNodePos(1, iHNode) + new float2(0.5f, 0) * NodeSize, new float2(0.5f, 1) * NodeSize, ActNodeColor(hva[iHNode]));
+          }
+        }
+      }
+      
+      using (Tensor ovr = oneshotSyncWorker.PeekOutput(MLP_Tensor.LayerNames.Output))
+      {
+        using (Tensor ova = oneshotSyncWorker.PeekOutput())
+        {
+          for (int iONode = 0; iONode < mlp._outputSize; iONode++)
+          {
+            AddRect(vh, GetNodePos(2, iONode), NodeSize, RawNodeColor(ovr[iONode]));
+            AddRect(vh, GetNodePos(2, iONode) + new float2(0.5f, 0) * NodeSize, new float2(0.5f, 1) * NodeSize, ActNodeColor(ova[iONode]));
+          }
+        }
+      }
+
+    }
+
+    string[] layerNames = new string[] { MLP_Tensor.LayerNames.Hidden, MLP_Tensor.LayerNames.Output };
+    float2 xBuf = NodeSize / 2;
+    xBuf.y = 0;
+    int prvLayer = 0;
+    int curLayer = 1;
+    foreach (string layerName in layerNames)
+    {
+      TensorShape tShape = _testMLP.GetLayerShape(layerName);
+      for (int iPNode = 0; iPNode < tShape.flatHeight; iPNode++)
+      {
+        for (int iCNode = 0; iCNode < tShape.flatWidth; iCNode++)
+        {
+          float2 posI = GetNodePos(prvLayer, iPNode) + NodeSize / 2;
+          float2 posW = GetNodePos(curLayer, iCNode) + NodeSize / 2;
+
+          float t = 0.5f + mlp.GetWeight(layerName, iPNode, iCNode);
+          DrawLine(vh, posI + xBuf, posW - xBuf, 0.025f, TurboColorMap.Map(t));
+        }
+      }
+      prvLayer = curLayer;
+      curLayer++;
+    }
   }
 
   [ContextMenu("Mark Dirty")]
-  void MarkDirty() {
+  private void MarkDirty()
+  {
     UpdateGeometry();
   }
 
-
-  [ContextMenu("Find Bounds")]
-  public void FindBounds()
-  {
-    Random _rndu = new Random((uint)UnityEngine.Random.Range(0, int.MaxValue));
-    var mlp = _TestMLP;
-    var hbnds = new float4x2(float.PositiveInfinity, float.NegativeInfinity);
-    var obnds = new float4x2(float.PositiveInfinity, float.NegativeInfinity);
-    for (int iSample = 0; iSample < 20; iSample++) {
-      float4 obs=0;
-      obs.xy = _rndu.NextFloat2(_obsMin, _obsMax);
-      obs.zw = _rndu.NextFloat2(-2, 2);
-
-      // TODO: Get intermediate tensors;
-      float4 hv = 1;// mlp.GetHiddenValues(obs, true)[0];
-      hbnds.c0 = math.min(hbnds.c0, hv);
-      hbnds.c1 = math.max(hbnds.c1, hv);
-
-      float4 ov = 0;//mlp.Execute(obs);
-      obnds.c0 = math.min(obnds.c0, ov);
-      obnds.c1 = math.max(obnds.c1, ov);
-    }
-
-    hiddenBounds = hbnds + new float4x2(-.001f, .001f);
-    outBounds = obnds + new float4x2(-.001f, .001f);
-  }
 }

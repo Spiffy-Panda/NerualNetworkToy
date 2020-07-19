@@ -23,7 +23,7 @@ namespace SpiffyLibrary
 
     public float NextFloat1()
     {
-      if (_spare == Single.NaN)
+      if (float.IsNaN(_spare))
       {
         float2 tmp = NextFloat2();
         _spare = tmp.x;

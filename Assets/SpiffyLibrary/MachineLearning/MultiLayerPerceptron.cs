@@ -5,20 +5,7 @@ using UnityEngine;
 
 namespace SpiffyLibrary.MachineLearning
 {
-
-  public abstract class MLP
-  {
-    public abstract void Copy(MLP other);
-    public abstract void Clear();
-
-    public abstract void Mutate(ref GaussianGenerator rnd, float learningRate);
-
-
-    public abstract float GetWeight(string layerName, int srcNode, int dstNode);
-    public abstract float GetBias(string layerName, int dstNode);
-  }
-
-  public class MLP_Tensor : MLP
+  public class MLP_Tensor 
   {
     public static class LayerNames
     {
@@ -33,9 +20,35 @@ namespace SpiffyLibrary.MachineLearning
     public readonly int _outputSize;
     public readonly Model model;
 
-    public Layer.FusedActivation activation = Layer.FusedActivation.Sigmoid;
+    public static Layer MBActivationByName(ref ModelBuilder mb, string name, object input, Layer.FusedActivation activation) {
+      switch (activation)
+      {
+        case Layer.FusedActivation.Exp:
+          return mb.Exp(name, input);
+        case Layer.FusedActivation.Log:
+          return mb.Log(name, input);
+        case Layer.FusedActivation.Neg:
+          return mb.Neg(name, input);
+        case Layer.FusedActivation.None:
+          return mb.Identity(name, input);
+        case Layer.FusedActivation.Relu:
+          return mb.Relu(name, input);
+        case Layer.FusedActivation.Relu6:
+          return mb.Relu6(name, input);
+        case Layer.FusedActivation.Sigmoid:
+          return mb.Sigmoid(name, input);
+        case Layer.FusedActivation.Sqrt:
+          return mb.Sqrt(name, input);
+        case Layer.FusedActivation.Swish:
+          return mb.Swish(name, input);
+        case Layer.FusedActivation.Tanh:
+          return mb.Tanh(name, input);
+        default:
+          throw new KeyNotFoundException();
+      }
+    }
 
-    public MLP_Tensor(int inputSize = 4, int outputSize = 4, int hiddenSize = 4)
+    public MLP_Tensor(int inputSize = 4, int outputSize = 4, int hiddenSize = 4, Layer.FusedActivation activation = Layer.FusedActivation.Relu)
     {
       _inputSize = inputSize;
       _hiddenSize = hiddenSize;
@@ -45,16 +58,17 @@ namespace SpiffyLibrary.MachineLearning
       ModelBuilder mb = new ModelBuilder();
       Model.Input inputLayer = mb.Input(LayerNames.Input, new int[] { -1, 1, 1, _inputSize });
       Layer hiddenDenseLayer = mb.Dense(LayerNames.Hidden, inputLayer, tca.Alloc(new TensorShape(_inputSize, _hiddenSize)), tca.Alloc(new TensorShape(1, _hiddenSize)));
-      Layer hiddenActiveLayer = mb.Relu(LayerNames.HiddenActive, hiddenDenseLayer);
-      Layer outputDenseLayer = mb.Dense(LayerNames.Output, hiddenActiveLayer, tca.Alloc(new TensorShape(_hiddenSize,_outputSize)), tca.Alloc(new TensorShape(1, _outputSize)));
-      Layer outputActiveLayer = mb.Relu(LayerNames.OutputActive, outputDenseLayer);
+
+      Layer hiddenActiveLayer = MBActivationByName(ref mb, LayerNames.HiddenActive, hiddenDenseLayer, activation);
+      Layer outputDenseLayer  = mb.Dense(LayerNames.Output, hiddenActiveLayer, tca.Alloc(new TensorShape(_hiddenSize,_outputSize)), tca.Alloc(new TensorShape(1, _outputSize)));
+      Layer outputActiveLayer = MBActivationByName(ref mb, LayerNames.OutputActive, outputDenseLayer, activation);
       mb.Output(outputActiveLayer);
       model = mb.model;
       tca.Dispose();
     }
-    public override void Copy(MLP other) { throw new NotImplementedException(); }
+    public void Copy(MLP_Tensor other) { throw new NotImplementedException(); }
 
-    public override void Clear()
+    public void Clear()
     {
       foreach (Layer layer in model.layers)
       {
@@ -65,7 +79,7 @@ namespace SpiffyLibrary.MachineLearning
       }
     }
 
-    public override void Mutate(ref GaussianGenerator rnd, float learningRate)
+    public void Mutate(ref GaussianGenerator rnd, float learningRate)
     {
 
       foreach (Layer layer in model.layers)
@@ -77,8 +91,22 @@ namespace SpiffyLibrary.MachineLearning
       }
     }
 
+    public TensorShape GetLayerShape(string layerName)
+    {
+      foreach (Layer layer in model.layers)
+      {
+        if (layer.name == layerName)
+        {
+          if(layer.datasets.Length == 2)
+            return layer.datasets[0].shape;
+          else 
+            throw new ArgumentException($"Layer \"{layerName}\" is not a dense layer.");
+        }
+      }
+      throw new KeyNotFoundException($"Layer \"{layerName}\" not found.");
+    }
 
-    public override float GetWeight(string layerName, int srcNode, int dstNode)
+    public float GetWeight(string layerName, int srcNode, int dstNode)
     {
       foreach (Layer layer in model.layers)
       {
@@ -92,7 +120,7 @@ namespace SpiffyLibrary.MachineLearning
       }
       throw new KeyNotFoundException($"Layer \"{layerName}\" not found.");
     }
-    public override float GetBias(string layerName, int dstNode)
+    public float GetBias(string layerName, int dstNode)
     {
       foreach (Layer layer in model.layers)
       {
