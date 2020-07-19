@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using SpiffyLibrary.MachineLearning;
 using Unity.Mathematics;
 using UnityEngine;
 [RequireComponent(typeof(AcademyMove))]

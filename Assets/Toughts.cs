@@ -2,6 +2,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Transactions;
+using SpiffyLibrary;
+using SpiffyLibrary.MachineLearning;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.UI;
@@ -31,6 +33,25 @@ public class Toughts : Graphic {
       }
       vh.AddTriangle(vtxc+0, vtxc+1, vtxc+ 2);
       vh.AddTriangle(vtxc+3, vtxc+0, vtxc+2);
+    }
+    void drwLine(float2 u, float2 v, float width, Color clr) {
+
+      float2 dlt = v - u;
+      float2 S = new float2(math.length(rectScale * dlt), math.cmin(rectScale) * width);
+      dlt = rectScale * dlt;
+      float2x2 R = float2x2.Rotate(math.atan2(dlt.y, dlt.x));
+      float2x2 RS= math.mul(R,float2x2.Scale(S));
+      Func<float2, float2> T2 = (vtx) => (math.mul(RS, vtx)  + T(u));
+       
+      int vtxc = vh.currentVertCount;
+      for (int iVtx = 0; iVtx < 4; iVtx++)
+      {
+        vh.AddVert((Vector2)T2(rBase[iVtx]-new float2(0,0.5f)), clr, Vector2.zero);
+
+      }
+      vh.AddTriangle(vtxc + 0, vtxc + 1, vtxc + 2);
+      vh.AddTriangle(vtxc + 3, vtxc + 0, vtxc + 2);
+
     }
 
     int hiddenLayerCount = 1;
@@ -65,29 +86,10 @@ public class Toughts : Graphic {
       macroAddRect(macGetNodePos(1, iDim)+ nodeSize / 4, nodeSize/2, jet(hva[iDim]));
     }
 
-    float4 ov = math.unlerp(outBounds.c0, outBounds.c1, mlp.Execute(_observe));
+    float4 ov = math.unlerp(outBounds.c0, outBounds.c1, 0);
     for (int iONode = 0; iONode < 4; iONode++)
       macroAddRect(macGetNodePos(2, iONode), nodeSize, jet(ov[iONode]));
 
-    void drwLine(float2 u, float2 v, float width, Color clr) {
-
-      float2 dlt = v - u;
-      float2 S = new float2(math.length(rectScale * dlt), math.cmin(rectScale) * width);
-      dlt = rectScale * dlt;
-      float2x2 R = float2x2.Rotate(math.atan2(dlt.y, dlt.x));
-      float2x2 RS= math.mul(R,float2x2.Scale(S));
-      Func<float2, float2> T2 = (vtx) => (math.mul(RS, vtx)  + T(u));
-       
-      int vtxc = vh.currentVertCount;
-      for (int iVtx = 0; iVtx < 4; iVtx++)
-      {
-        vh.AddVert((Vector2)T2(rBase[iVtx]-new float2(0,0.5f)), clr, Vector2.zero);
-
-      }
-      vh.AddTriangle(vtxc + 0, vtxc + 1, vtxc + 2);
-      vh.AddTriangle(vtxc + 3, vtxc + 0, vtxc + 2);
-
-    }
 
     float2 xBuf = nodeSize/2;
     xBuf.y = 0;  
@@ -98,7 +100,7 @@ public class Toughts : Graphic {
         float2 posI = macGetNodePos(0, iINode) + nodeSize / 2;
         float2 posW = macGetNodePos(1, iWNode) + nodeSize / 2;
 
-        float t = 0.5f + mlp.GetWeight(1,iINode,iWNode) / (2);
+        float t = 0.5f + mlp.GetWeight(MLP_Tensor.LayerNames.Hidden ,iINode,iWNode) / (2);
 
         drwLine(posI+xBuf, posW -xBuf, 0.025f, jet(t));
       }
@@ -110,7 +112,7 @@ public class Toughts : Graphic {
         float2 posW = macGetNodePos(1, iWNode) + nodeSize / 2;
         float2 posO = macGetNodePos(2, iONode) + nodeSize / 2;
 
-        float t = 0.5f + mlp.GetWeight(1, iWNode, iONode) ;
+        float t = 0.5f + mlp.GetWeight("output", iWNode, iONode) ;
 
         drwLine(posW + xBuf, posO- xBuf, 0.025f, jet(t));
       }
@@ -182,7 +184,7 @@ public class Toughts : Graphic {
       hbnds.c0 = math.min(hbnds.c0, hv);
       hbnds.c1 = math.max(hbnds.c1, hv);
 
-      float4 ov = mlp.Execute(obs);
+      float4 ov = 0;//mlp.Execute(obs);
       obnds.c0 = math.min(obnds.c0, ov);
       obnds.c1 = math.max(obnds.c1, ov);
     }

@@ -2,6 +2,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using SpiffyLibrary;
+using SpiffyLibrary.MachineLearning;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Assertions;
@@ -88,7 +90,7 @@ public class AcademyMove : MonoBehaviour {
     for (int i = 0; i < _iterations; i++)
     {
       float2 obs = Observe(state,tgt);
-      float4 actIntern = brain.Execute(new float4(obs,internState));
+      float4 actIntern = 0;// brain.Execute(new float4(obs,internState));
       float2 act = actIntern.xy;
       internState = actIntern.zw;
       float2 dir = new float2(math.cos(state.z), math.sin(state.z));

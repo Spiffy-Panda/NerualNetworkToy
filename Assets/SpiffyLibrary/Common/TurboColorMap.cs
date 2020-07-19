@@ -1,12 +1,13 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
 
-// Based on Google's Turbo Color Map
-public class TurboColorMap {
-  private static float3[] lookupTable = new float3[] {
+namespace SpiffyLibrary
+{
+  // Based on Google's Turbo Color Map
+  public class TurboColorMap
+  {
+    private static float3[] lookupTable = new float3[] {
     new float3(0.18995f, 0.07176f, 0.23217f),
     new float3(0.19483f, 0.08339f, 0.26149f),
     new float3(0.19956f, 0.09498f, 0.29024f),
@@ -266,16 +267,20 @@ public class TurboColorMap {
   };
 
 
-  public static Color Map(float ot) {
-    float t = Mathf.Clamp01(ot);
-    int idx = (int)(lookupTable.Length * t - 0.00001f);
-    try {
-      float3 vec = lookupTable[idx];
-      return new Color(vec.x, vec.y, vec.z);
-    }
-    catch (Exception ) {
-      Debug.Log($"{ot} {t} {idx}");
-      return Color.clear;
+    public static Color Map(float ot)
+    {
+      float t = Mathf.Clamp01(ot);
+      int idx = (int)(lookupTable.Length * t - 0.00001f);
+      try
+      {
+        float3 vec = lookupTable[idx];
+        return new Color(vec.x, vec.y, vec.z);
+      }
+      catch (Exception)
+      {
+        Debug.Log($"{ot} {t} {idx}");
+        return Color.clear;
+      }
     }
   }
 }

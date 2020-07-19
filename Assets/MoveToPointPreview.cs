@@ -1,5 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using SpiffyLibrary;
+using SpiffyLibrary.MachineLearning;
 using Unity.Mathematics;
 using UnityEngine;
 using Random = Unity.Mathematics.Random;

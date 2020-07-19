@@ -3,7 +3,8 @@
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "Unity.Barracuda"
+        "Unity.Barracuda",
+        "SpiffyLibraryML"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
