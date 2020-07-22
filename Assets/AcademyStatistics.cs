@@ -29,8 +29,8 @@ public class AcademyStatistics : MonoBehaviour
   {
     _bestHistory.Add(metrics);
 
-    var mlp = _Academy._BestBrain as MLP_Tensor;
-    _AgentJson = JsonUtility.ToJson(mlp);
+    //var mlp = _Academy._BestBrain as MultiLayerPerception;
+    //_AgentJson = JsonUtility.ToJson(mlp);
   }
 
   // Update is called once per frame

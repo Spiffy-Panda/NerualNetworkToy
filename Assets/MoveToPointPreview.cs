@@ -15,7 +15,7 @@ public class MoveToPointPreview : MonoBehaviour {
   private float3[] _stateBuffer;
   private float4[] _actBuffer;
   public float2 _targetPosition;
-  private int _iterations => _Academy._iterations;
+  private int _iterations => _Academy._simParams.iterations;
 
   public bool _moveTarget = true;
   public float3 _stateMin = new float3(-5, -5, -math.PI);
@@ -49,7 +49,9 @@ public class MoveToPointPreview : MonoBehaviour {
   public void Update() {
     Tensor obsTensor = new Tensor(new int[] {1, 1, 1, 4});
 
-    _Academy.Observe(ref obsTensor,CurState, _targetPosition);
+    float2 obs = AcademyMove.Observe(new float3(_targetPosition-CurState.xy,CurState.z));
+    obsTensor[0] = obs[0];
+    obsTensor[1] = obs[1];
     _NetDraw._observe = obsTensor.ToReadOnlyArray();
     _NetDraw.SetAllDirty();
     obsTensor.Dispose();

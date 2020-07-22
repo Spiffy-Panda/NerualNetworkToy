@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace SpiffyLibrary.MachineLearning
 {
-  public class MLP_Tensor 
+  public class MultiLayerPerception 
   {
     public static class LayerNames
     {
@@ -15,11 +15,51 @@ namespace SpiffyLibrary.MachineLearning
       public const string Output = "Output";
       public static string OutputActive => Output+ "_Active";
     }
-    public readonly int _hiddenSize;
-    public readonly int _inputSize;
-    public readonly int _outputSize;
+    public struct Shape {
+      public int hiddenSize;
+      public int inputSize;
+      public int outputSize;
+      public int WeightCount => (inputSize +1 )* hiddenSize + (hiddenSize +1)* outputSize;
+      public override string ToString() => $"<I{inputSize},H{inputSize},O{inputSize}:{WeightCount}>";
+    } 
     public readonly Model model;
 
+    public readonly Shape _shape;
+    // Readonly as in _weights is the same size and instance, but not content.
+    private readonly float[] m_cache;
+
+    private void PrepareCache() {
+      int totIdx = 0;
+      try {
+        foreach (Layer layer in model.layers) {
+          foreach (float w in layer.weights) {
+            m_cache[totIdx++] = w;
+          }
+        }
+      }
+      catch (Exception e) {
+        Debug.LogError($"{m_cache.Length} with shape {_shape}\n{e.Message}");
+        throw;
+      }
+      Debug.Assert(totIdx == m_cache.Length);
+    }
+
+    public float[] GetReadonlyWeights() => m_cache;
+
+    public void LoadWeights(float[] otherArray)
+    {
+      int totIdx = 0;
+      Debug.Assert(otherArray.Length == _shape.WeightCount);
+      Array.Copy(otherArray,m_cache,_shape.WeightCount);
+      foreach (Layer layer in model.layers)
+      {
+        for (int i = 0; i < layer.weights.Length; i++)
+        {
+          layer.weights[i] = m_cache[totIdx++];
+        }
+      }
+      Debug.Assert(totIdx == m_cache.Length);
+    }
     public static Layer MBActivationByName(ref ModelBuilder mb, string name, object input, Layer.FusedActivation activation) {
       switch (activation)
       {
@@ -48,26 +88,26 @@ namespace SpiffyLibrary.MachineLearning
       }
     }
 
-    public MLP_Tensor(int inputSize = 4, int outputSize = 4, int hiddenSize = 4, Layer.FusedActivation activation = Layer.FusedActivation.Relu)
-    {
-      _inputSize = inputSize;
-      _hiddenSize = hiddenSize;
-      _outputSize = outputSize;
-      TensorCachingAllocator tca = new TensorCachingAllocator();
-
+    public MultiLayerPerception(Shape shape, Layer.FusedActivation activation = Layer.FusedActivation.Relu) {
+      _shape = shape;
       ModelBuilder mb = new ModelBuilder();
-      Model.Input inputLayer = mb.Input(LayerNames.Input, new int[] { -1, 1, 1, _inputSize });
-      Layer hiddenDenseLayer = mb.Dense(LayerNames.Hidden, inputLayer, tca.Alloc(new TensorShape(_inputSize, _hiddenSize)), tca.Alloc(new TensorShape(1, _hiddenSize)));
-
-      Layer hiddenActiveLayer = MBActivationByName(ref mb, LayerNames.HiddenActive, hiddenDenseLayer, activation);
-      Layer outputDenseLayer  = mb.Dense(LayerNames.Output, hiddenActiveLayer, tca.Alloc(new TensorShape(_hiddenSize,_outputSize)), tca.Alloc(new TensorShape(1, _outputSize)));
-      Layer outputActiveLayer = MBActivationByName(ref mb, LayerNames.OutputActive, outputDenseLayer, activation);
-      mb.Output(outputActiveLayer);
-      model = mb.model;
-      tca.Dispose();
+      m_cache = new float[_shape.WeightCount];
+      { // Build the model
+        TensorCachingAllocator tca = new TensorCachingAllocator(); 
+        string prevLayerName = "[ERROR]NOT_INITIALIZED";
+        prevLayerName = mb.Input(LayerNames.Input, new int[] { -1, 1, 1, _shape.inputSize }).name;
+        prevLayerName = mb.Dense(LayerNames.Hidden, prevLayerName, tca.Alloc(new TensorShape(_shape.inputSize, _shape.hiddenSize)), tca.Alloc(new TensorShape(1, _shape.hiddenSize))).name;
+        prevLayerName = MBActivationByName(ref mb, LayerNames.HiddenActive, prevLayerName, activation).name;
+        prevLayerName = mb.Dense(LayerNames.Output, prevLayerName, tca.Alloc(new TensorShape(_shape.hiddenSize, _shape.outputSize)), tca.Alloc(new TensorShape(1, _shape.outputSize))).name;
+        prevLayerName = MBActivationByName(ref mb, LayerNames.OutputActive, prevLayerName, activation).name;
+        tca.Dispose();
+        Debug.Assert(prevLayerName == mb.Output(prevLayerName));
+        model = mb.model;
+      }
+      PrepareCache();
     }
 
-    public void Copy(MLP_Tensor other)
+    public void Copy(MultiLayerPerception other)
     {
       for (int iLayer = 0; iLayer < model.layers.Count; iLayer++)
       {
@@ -85,11 +125,11 @@ namespace SpiffyLibrary.MachineLearning
           layer.weights[iWeight] = 0;
         }
       }
+      PrepareCache();
     }
 
     public void Mutate(ref GaussianGenerator rnd, float learningRate)
     {
-
       foreach (Layer layer in model.layers)
       {
         for (int iWeight = 0; iWeight < layer.weights.Length; iWeight++)
@@ -97,6 +137,7 @@ namespace SpiffyLibrary.MachineLearning
           layer.weights[iWeight] += rnd.NextFloat1() * learningRate;
         }
       }
+      PrepareCache();
     }
 
     public TensorShape GetLayerShape(string layerName)

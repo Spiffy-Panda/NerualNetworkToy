@@ -21,9 +21,9 @@ public class Toughts : Graphic
   private static readonly float2x4 RectCourners = new float2x4(0, 1, 1, 0, 0, 0, 1, 1);
 
   private readonly string[] _extraLayers = new string[] {
-    MLP_Tensor.LayerNames.Hidden,
-    MLP_Tensor.LayerNames.HiddenActive,
-    MLP_Tensor.LayerNames.Output
+    MultiLayerPerception.LayerNames.Hidden,
+    MultiLayerPerception.LayerNames.HiddenActive,
+    MultiLayerPerception.LayerNames.Output
   };
 
   float2 NodeSize => new float2(0.2f / (RectScale.x/RectScale.y), 0.2f);
@@ -41,16 +41,21 @@ public class Toughts : Graphic
   {
     throw new NotImplementedException();
   } 
-  private MLP_Tensor _testMLP;
+  private MultiLayerPerception _testMLP;
 
 
-  public MLP_Tensor _TestMLP
+  public MultiLayerPerception _TestMLP
   {
     get
     {
       if (_testMLP == null)
       {
-        _testMLP = new MLP_Tensor(5, 4, 2, Layer.FusedActivation.Relu6);
+        var shape = new MultiLayerPerception.Shape{
+          inputSize = 5,
+          outputSize = 4,
+          hiddenSize = 2
+        };
+        _testMLP = new MultiLayerPerception(shape, Layer.FusedActivation.Relu6);
         Random rndu = new Random((uint)UnityEngine.Random.Range(0, int.MaxValue));
         GaussianGenerator rndn = new GaussianGenerator(rndu);
         _testMLP.Mutate(ref rndn, 1);
@@ -94,7 +99,7 @@ public class Toughts : Graphic
   }
   private float2 GetNodePos(int layer, int idx)
   {
-    int[] layerSizes = new int[] { _TestMLP._inputSize, _TestMLP._hiddenSize, _TestMLP._outputSize };
+    int[] layerSizes = new int[] { _TestMLP._shape.inputSize, _TestMLP._shape.hiddenSize, _TestMLP._shape.outputSize };
     float2 usable = 1 - NodeSize;
     float2 nPos;
     nPos.x = layer / (2f);
@@ -105,33 +110,33 @@ public class Toughts : Graphic
   {
     base.OnPopulateMesh(vh);
     vh.Clear();
-    MLP_Tensor mlp = _TestMLP;
+    MultiLayerPerception mlp = _TestMLP;
     AddRect(vh, 0, 1, Color.gray);
 
     using (IWorker oneshotSyncWorker =
       WorkerFactory.CreateWorker(_testMLP.model, _extraLayers, WorkerFactory.Device.GPU)) {
 
-      using (Tensor obsTensor = new Tensor(new TensorShape(1, mlp._inputSize)))
+      using (Tensor obsTensor = new Tensor(new TensorShape(1, mlp._shape.inputSize)))
       {
-        if(_observe.Length < mlp._inputSize)
-          _observe = new float[mlp._inputSize]; 
-        for (int iINode = 0; iINode < mlp._inputSize; iINode++)
+        if(_observe.Length < mlp._shape.inputSize)
+          _observe = new float[mlp._shape.inputSize]; 
+        for (int iINode = 0; iINode < mlp._shape.inputSize; iINode++)
         {
           obsTensor[iINode] = _observe[iINode];
         }
         oneshotSyncWorker.Execute(obsTensor).FlushSchedule();
       }
-      for (int iINode = 0; iINode < mlp._inputSize; iINode++)
+      for (int iINode = 0; iINode < mlp._shape.inputSize; iINode++)
       {
         AddRect(vh, GetNodePos(0, iINode), NodeSize, ActNodeColor(_observe[iINode]));
       }
 
       
-      using (Tensor hvr = oneshotSyncWorker.PeekOutput(MLP_Tensor.LayerNames.Hidden))
+      using (Tensor hvr = oneshotSyncWorker.PeekOutput(MultiLayerPerception.LayerNames.Hidden))
       {
-        using (Tensor hva = oneshotSyncWorker.PeekOutput(MLP_Tensor.LayerNames.HiddenActive))
+        using (Tensor hva = oneshotSyncWorker.PeekOutput(MultiLayerPerception.LayerNames.HiddenActive))
         {
-          for (int iHNode = 0; iHNode < mlp._hiddenSize; iHNode++)
+          for (int iHNode = 0; iHNode < mlp._shape.hiddenSize; iHNode++)
           {
             AddRect(vh, GetNodePos(1, iHNode), NodeSize, RawNodeColor(hvr[iHNode]));
             AddRect(vh, GetNodePos(1, iHNode) + new float2(0.5f, 0) * NodeSize, new float2(0.5f, 1) * NodeSize, ActNodeColor(hva[iHNode]));
@@ -139,11 +144,11 @@ public class Toughts : Graphic
         }
       }
       
-      using (Tensor ovr = oneshotSyncWorker.PeekOutput(MLP_Tensor.LayerNames.Output))
+      using (Tensor ovr = oneshotSyncWorker.PeekOutput(MultiLayerPerception.LayerNames.Output))
       {
         using (Tensor ova = oneshotSyncWorker.PeekOutput())
         {
-          for (int iONode = 0; iONode < mlp._outputSize; iONode++)
+          for (int iONode = 0; iONode < mlp._shape.outputSize; iONode++)
           {
             AddRect(vh, GetNodePos(2, iONode), NodeSize, RawNodeColor(ovr[iONode]));
             AddRect(vh, GetNodePos(2, iONode) + new float2(0.5f, 0) * NodeSize, new float2(0.5f, 1) * NodeSize, ActNodeColor(ova[iONode]));
@@ -153,7 +158,7 @@ public class Toughts : Graphic
 
     }
 
-    string[] layerNames = new string[] { MLP_Tensor.LayerNames.Hidden, MLP_Tensor.LayerNames.Output };
+    string[] layerNames = new string[] { MultiLayerPerception.LayerNames.Hidden, MultiLayerPerception.LayerNames.Output };
     float2 xBuf = NodeSize / 2;
     xBuf.y = 0;
     int prvLayer = 0;

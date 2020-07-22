@@ -1,7 +1,10 @@
 ﻿using NUnit.Framework;
 using SpiffyLibrary;
 using SpiffyLibrary.MachineLearning;
+using System.Collections.Generic;
+using System.Linq;
 using Unity.Barracuda;
+using Unity.Mathematics;
 using UnityEngine;
 using Random = Unity.Mathematics.Random;
 public class TensorTest
@@ -82,7 +85,7 @@ public class TensorTest
     ModelBuilder mb = new ModelBuilder();
     Model.Input inputLayer = mb.Input("Input", new int[] { -1, 1, 1, 1 });
     Layer prevLayer = null;
-    prevLayer = mb.Dense(MLP_Tensor.LayerNames.Hidden, inputLayer, tca.Alloc(new TensorShape(1, 1)), tca.Alloc(new TensorShape(1, 1)));
+    prevLayer = mb.Dense(MultiLayerPerception.LayerNames.Hidden, inputLayer, tca.Alloc(new TensorShape(1, 1)), tca.Alloc(new TensorShape(1, 1)));
     prevLayer.weights[0] = 1;
     prevLayer.weights[1] = 1;
     Debug.Log(prevLayer.weights.Length + ": " + string.Join(",", prevLayer.weights));
@@ -122,19 +125,22 @@ public class TensorTest
   public void MLP_Shape()
   {
     TensorCachingAllocator tca = new TensorCachingAllocator();
-    int inputSize = 2;
-    int outputSize = 3;
-    MLP_Tensor mlp = new MLP_Tensor(inputSize, outputSize, hiddenSize: 5);
+    var shape = new MultiLayerPerception.Shape {
+      inputSize = 2,
+      outputSize = 3,
+      hiddenSize = 5
+    };
+    MultiLayerPerception mlp = new MultiLayerPerception(shape);
     IWorker worker = WorkerFactory.CreateWorker(mlp.model, WorkerFactory.Device.GPU);
-    Tensor input = tca.Alloc(new TensorShape(1, 1, 1, inputSize));
-    for (int i = 0; i < inputSize; i++)
+    Tensor input = tca.Alloc(new TensorShape(1, 1, 1, shape.inputSize));
+    for (int i = 0; i < shape.inputSize; i++)
     {
       input[i] = i;
     }
     IWorker ex = worker.Execute(input);
     ex.FlushSchedule(true);
     Tensor output = ex.PeekOutput();
-    for (int i = 0; i < outputSize; i++)
+    for (int i = 0; i < shape.outputSize; i++)
     {
       Debug.Log($"output[{i}] = {output[i]}");
     }
@@ -146,10 +152,12 @@ public class TensorTest
   public void MLP_Calc()
   {
     TensorCachingAllocator tca = new TensorCachingAllocator();
-    int inputSize = 2;
-    int outputSize = 3;
-    int hiddenSize = 2;
-    MLP_Tensor mlp = new MLP_Tensor(inputSize, outputSize, hiddenSize);
+    var shape = new MultiLayerPerception.Shape {
+      inputSize = 2,
+      outputSize = 3,
+      hiddenSize = 2
+    };
+    MultiLayerPerception mlp = new MultiLayerPerception(shape);
     int layerCnt = 0;
     foreach (Layer layer in mlp.model.layers)
     {
@@ -168,10 +176,10 @@ public class TensorTest
       }
     }
 
-    string HiddenLayer = MLP_Tensor.LayerNames.Hidden;
+    string HiddenLayer = MultiLayerPerception.LayerNames.Hidden;
     IWorker worker = WorkerFactory.CreateWorker(mlp.model, new string[] { HiddenLayer }, WorkerFactory.Device.GPU);
-    Tensor inTensor = tca.Alloc(new TensorShape(1, 1, 1, inputSize));
-    for (int i = 0; i < inputSize; i++)
+    Tensor inTensor = tca.Alloc(new TensorShape(1, 1, 1, shape.inputSize));
+    for (int i = 0; i < shape.inputSize; i++)
     {
       inTensor[i] = i;
       Debug.Log($"input[{i}] = {inTensor[i]}");
@@ -181,23 +189,23 @@ public class TensorTest
 
 
     Tensor hTensor = ex.PeekOutput(HiddenLayer);
-    Debug.Assert(hTensor.length == hiddenSize);
+    Debug.Assert(hTensor.length == shape.hiddenSize);
     for (int i = 0; i < hTensor.length; i++)
     {
       Debug.Log($"hidden1[{i}] = {hTensor[i]}");
     }
     Tensor output = ex.PeekOutput();
-    Debug.Assert(output.length == outputSize);
+    Debug.Assert(output.length == shape.outputSize);
     for (int i = 0; i < output.length; i++)
     {
       Debug.Log($"output[{i}] = {output[i]}");
     }
     
-    for (int iHNode = 0; iHNode < hiddenSize; iHNode++)
+    for (int iHNode = 0; iHNode < shape.hiddenSize; iHNode++)
     {
       string str = "";
       float sum = 0;
-      for (int iINode = 0; iINode < inputSize; iINode++)
+      for (int iINode = 0; iINode < shape.inputSize; iINode++)
       {
         float w = mlp.GetWeight(HiddenLayer, iINode, iHNode);
         str += $"{w} * {inTensor[iINode]} + ";
@@ -226,6 +234,62 @@ public class TensorTest
       Debug.Assert(!float.IsNaN(val));
     }
     
+  }
+  [Test]
+  public static void TestGaussian()
+  {
+
+    float t = math.sqrt(-2.0f * math.log(UnityEngine.Random.value)) * math.cos(UnityEngine.Random.value);
+    Debug.Log(t);
+
+
+    Dictionary<int, int> _cnt1 = new Dictionary<int, int>();
+    Dictionary<int, int> _cnt2 = new Dictionary<int, int>();
+    GaussianGenerator rndg = new GaussianGenerator(new Random((uint)UnityEngine.Random.Range(0, int.MaxValue)));
+    for (int i = 0; i < 100000; i++)
+    {
+      float2 r = rndg.NextFloat2();
+      int2 keys = new int2(Mathf.FloorToInt(r[0] * 20), Mathf.FloorToInt(r[1] * 20));
+      if (!_cnt1.ContainsKey(keys[0]))
+      {
+        _cnt1[keys[0]] = 0;
+      }
+
+      _cnt1[keys[0]] += 1;
+      if (!_cnt2.ContainsKey(keys[1]))
+      {
+        _cnt2[keys[1]] = 0;
+      }
+
+      _cnt2[keys[1]] += 1;
+    }
+
+    int width = math.max(_cnt1.Max(kv => kv.Key), _cnt2.Max(kv => kv.Key));
+    int height = math.max(_cnt1.Max(kv => kv.Value), _cnt2.Max(kv => kv.Value)) / 10;
+    for (int i = -width; i < width; i++)
+    {
+      {
+
+        float val1 = 0.5f / height;
+        if (_cnt1.ContainsKey(i))
+        {
+          val1 = _cnt1[i] / (float)height;
+        }
+
+        Debug.DrawRay(Vector3.right * i / (width / 5f), Vector3.up * val1, Color.blue, 10, false);
+      }
+      {
+
+        float val2 = 0.5f / height;
+        if (_cnt2.ContainsKey(i))
+        {
+          val2 = _cnt2[i] / (float)height;
+        }
+
+        Debug.DrawRay(Vector3.right * i / (width / 5f) + Vector3.forward / 10, Vector3.up * val2, Color.yellow, 10, false);
+      }
+    }
+
   }
 }
 
