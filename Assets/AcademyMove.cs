@@ -60,8 +60,13 @@ public class MoveContext
     _log.AppendLine("Creating Worker");
     inTensor = AcademyMove.TensorAllocator.Alloc(new TensorShape(_simParams.runCount, _mlpModel._shape.inputSize));
     AcademyMove.m_ops.Prepare(inTensor);
-    _worker = WorkerFactory.CreateWorker(_mlpModel.model, WorkerFactory.Device.GPU);
+
+
+    
+    _worker= WorkerFactory.CreateWorker(WorkerFactory.Type.ComputePrecompiled, _mlpModel.model,false);
+    //_worker = WorkerFactory.CreateWorker(_mlpModel.model, WorkerFactory.Device.GPU);
     _log.AppendLine("Worker Created");
+
   }
 
   public bool Tick() => _runCoro.MoveNext(); 
@@ -85,11 +90,17 @@ public class MoveContext
     {
       if(i%100==0)
         yield return null;
-      for (int iRun = 0; iRun < _simParams.runCount; iRun++)
-      {
-        float2 obs = AcademyMove.Observe(states[iRun]);
-        //inTensor[iRun, 0] = obs.x;
-        //inTensor[iRun, 1] = obs.y;
+      try {
+        for (int iRun = 0; iRun < _simParams.runCount; iRun++)
+        {
+          float2 obs = AcademyMove.Observe(states[iRun]);
+          inTensor[iRun, 0] = obs.x;
+          inTensor[iRun, 1] = obs.y;
+        }
+      }
+      catch (Exception e) {
+        _log.AppendLine(e.Message);
+        throw;
       }
 
       _worker.Execute(inTensor);
@@ -265,6 +276,7 @@ public class AcademyMove : MonoBehaviour
 
   public bool _dbgContextComplete;
   public Stopwatch _dbgStopwatch;
+  public Task _task;
   private void Update()
   {
     if (_isGenerating)
@@ -290,8 +302,12 @@ public class AcademyMove : MonoBehaviour
       _dbgStopwatch = new Stopwatch();
       _dbgStopwatch.Start();
       _context.Start();
+      _task = new Task(() => {
+        while (_context.Tick()) ;
+      });
+      _task.Start();
     }
-    else if (!_context.Tick())
+    else if (_task.IsCompleted)
     {
       _dbgStopwatch.Stop();
       Debug.Log($"[{_dbgStopwatch.Elapsed}]Context{_context._id}:{_context._metrics}: {string.Join(",", _context.Weights)}");
