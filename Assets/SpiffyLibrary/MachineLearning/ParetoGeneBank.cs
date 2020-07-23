@@ -42,6 +42,13 @@ namespace SpiffyLibrary.MachineLearning {
         _metrics = new ReadOnlyDictionary<string, float>(metrics.ToDictionary(kv => kv.Key, kv => kv.Value));
       }
 
+      public string GetYamlEntry()
+      {
+        var metricEntries = _metrics.Select(kv => $"\t\t{kv.Key}: {kv.Value}");
+        return ($"- OriginalRunID: {_id}\n" +
+               $"\tMetric:\n{string.Join("\n", metricEntries)}\n" +
+               $"\tWeights: [{string.Join(", ", _weights)}]").Replace("\t", SoftTab);
+      }
       public override string ToString() => $"{_id}: {string.Join(",", _metrics.Select(kv=>$"({kv.Key},{kv.Value})"))}";
     }
 
@@ -51,7 +58,7 @@ namespace SpiffyLibrary.MachineLearning {
     public int GenomeCount => _frontier.Count;
     public event Action<GeneInfo> _GeneRemovedFromPool;
     public event Action<GeneInfo> _GeneAddedToPool;
-
+    public const string SoftTab = "  ";
 
     public bool Evaluate(float[] weights, Dictionary<string, float> metrics)
     {
@@ -118,14 +125,7 @@ namespace SpiffyLibrary.MachineLearning {
     // Yaml is more human readable then json, so quick custom output.
     public string GetYAML() {
      
-      string yamlEntry(ParetoGeneBank.GeneInfo gi)
-      {
-        var metricEntries = gi._metrics.Select(kv => $"\t\t{kv.Key}: {kv.Value}");
-        return $"- OriginalRunID: {gi._id}\n" +
-               $"\tMetric:\n{string.Join("\n", metricEntries)}\n" +
-               $"\tWeights: [{string.Join(", ", gi._weights)}]";
-      }
-      return "data:\n"+ string.Join("\n", _frontier.Select(yamlEntry)).Replace("\t","  ");
+      return "data:\n"+ string.Join("\n", _frontier.Select(gi=>gi.GetYamlEntry())).Replace("\t",SoftTab);
     }
 
     public int ClearGeneEntries() {

@@ -188,6 +188,7 @@ public class AcademyMove : MonoBehaviour
   public float3 _stateMax = new float3(5, 5, math.PI);
   public List<MoveContext> _currentGeneration = new List<MoveContext>();
   public int _generationSize = 100;
+  private int _curGeneration = -1;
   public void Start()
   {
     TensorAllocator = new TensorCachingAllocator();
@@ -207,6 +208,8 @@ public class AcademyMove : MonoBehaviour
   private void Update()
   {
     if (_currentGeneration.Count == 0) {
+      _curGeneration++;
+      Debug.Log($"Creating Generation: {_curGeneration}");
       for (int iContext = 0; iContext < _generationSize; iContext++) {
         float[] weights = new float[_mlpShape.WeightCount];
         for (int iWeight = 0; iWeight < weights.Length; iWeight++)
@@ -223,7 +226,6 @@ public class AcademyMove : MonoBehaviour
         if(context.Finished)
           continue;
         if (!context.Tick()) {
-          Debug.Log(string.Join(", ", context.Weights));
           GeneBankManager.Inst.Evaluate(context.Weights, context._metrics);
         }
 
@@ -233,7 +235,6 @@ public class AcademyMove : MonoBehaviour
       }
 
       _currentGeneration.RemoveAll(context => context.Finished);
-      Debug.Log($"{_currentGeneration.Count}, {tickCount}, {((_currentGeneration.Count>0)?_currentGeneration[0].Progress:1f)}");
     }
   }
 
