@@ -40,7 +40,7 @@ public class MoveToPointPreview : MonoBehaviour {
     if (_moveTarget)
       _startAngle = _rndu.NextFloat(_stateMin.z, _stateMax.z);
     state.z = _startAngle;
-    _Academy.PreviewBest(state,_targetPosition,_stateBuffer,_actBuffer);
+    //_Academy.PreviewBest(state,_targetPosition,_stateBuffer,_actBuffer);
     //_NetDraw._TestMLP = _Academy._BestBrain as MLP;
   }
 

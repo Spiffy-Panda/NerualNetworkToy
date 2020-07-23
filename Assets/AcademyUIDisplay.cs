@@ -31,7 +31,7 @@ public class AcademyUIDisplay : MonoBehaviour {
     string[] allFonts = Font.GetOSInstalledFontNames();
     _font = Font.CreateDynamicFontFromOSFont("Trebuchet MS",6);
     _textDisplay.font = _font;
-    Academy.NewBestFound += (m,c)=>_bestHistroyDirty = true;
+    //Academy.NewBestFound += (m,c)=>_bestHistroyDirty = true;
     
   }
 
@@ -84,7 +84,7 @@ public class AcademyUIDisplay : MonoBehaviour {
       
       sb.AppendLine($"Metric Weights: {w.x:0.00}, {w.y:0.00}, {w.z:0.00}");
 
-      float3 rMetrics = Academy._bestMetrics;
+      float3 rMetrics = 0;//Academy._bestMetrics;
 
       sb.AppendLine($"Best Metrics:");
 
@@ -105,7 +105,7 @@ public class AcademyUIDisplay : MonoBehaviour {
     _textDisplay.text = sb.ToString();
 
     if(_outBestsMetrics) {
-      float3 rawMetrics = Academy._bestMetrics;
+      float3 rawMetrics = 0;//Academy._bestMetrics;
       float3 invNormMetrics = 1- math.unlerp(AcadStats._minMetrics, AcadStats._maxMetrics, rawMetrics);
       float3 bryMetrics = invNormMetrics / Vector3.Dot(invNormMetrics, Vector3.one);
       if (!float.IsNaN(bryMetrics.x)) {

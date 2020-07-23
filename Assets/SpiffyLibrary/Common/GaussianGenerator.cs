@@ -15,7 +15,7 @@ namespace SpiffyLibrary
     private Random _uniform;
     private const float epsilon = Single.Epsilon;
     private const float tau = math.PI * 2;
-    private float _spare;
+    private float _spare = float.NaN;
 
     public GaussianGenerator(Random uniform)
     {

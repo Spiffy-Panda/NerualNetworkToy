@@ -2,6 +2,7 @@
 using SpiffyLibrary;
 using SpiffyLibrary.MachineLearning;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using Unity.Barracuda;
 using Unity.Mathematics;
@@ -291,6 +292,33 @@ public class TensorTest
     }
 
   }
+  [Test]
+  public void ReadOnlyCollection() {
+    float[] weights = new[] {0f, 1f, 2f, 3f};
+    var roWeights = new ReadOnlyCollection<float>(weights.ToArray());
+    var metricValues = new Dictionary<string, float>();
+    metricValues.Add("key1", 1);
+    metricValues.Add("key2", 2);
+    metricValues.Add("key3", 3);
+    var roMetricValues = new ReadOnlyDictionary<string, float>(metricValues.ToDictionary(kv=>kv.Key,kv=>kv.Value));
+    Debug.Log("Pre Modification:");
+    Debug.Log(string.Join(",", weights));
+    Debug.Log(string.Join(",", roWeights));
+    Debug.Log(string.Join(",", metricValues));
+    Debug.Log(string.Join(",", roMetricValues));
+
+    weights[2] = -1;
+    metricValues["key2"] = -2;
+
+    Debug.Log("Post Modification:");
+    Debug.Log(string.Join(",", weights));
+    Debug.Log(string.Join(",", roWeights));
+    Debug.Log(string.Join(",", metricValues));
+    Debug.Log(string.Join(",", roMetricValues));
+
+  }
+  
+
 }
 
 

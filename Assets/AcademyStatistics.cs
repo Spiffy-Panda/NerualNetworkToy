@@ -20,8 +20,8 @@ public class AcademyStatistics : MonoBehaviour
   public string _AgentJson = "";
   // Start is called before the first frame update
   void Start() {
-    _Academy.RatingFinished += OnRatingFinished;
-    _Academy.NewBestFound += OnNewBestFound;
+    //_Academy.RatingFinished += OnRatingFinished;
+    //_Academy.NewBestFound += OnNewBestFound;
     _bestHistory = new List<float3>();
   }
 
