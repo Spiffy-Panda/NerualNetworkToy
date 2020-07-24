@@ -20,7 +20,7 @@ namespace SpiffyLibrary.MachineLearning
       public int inputSize;
       public int outputSize;
       public int WeightCount => (inputSize +1 )* hiddenSize + (hiddenSize +1)* outputSize;
-      public override string ToString() => $"<I{inputSize},H{inputSize},O{inputSize}:{WeightCount}>";
+      public override string ToString() => $"<I{inputSize},H{hiddenSize},O{outputSize}:{WeightCount}>";
     } 
     public readonly Model model;
 

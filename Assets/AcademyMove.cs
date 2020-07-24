@@ -14,20 +14,39 @@ using UnityEngine;
 using Debug = UnityEngine.Debug;
 using Random = Unity.Mathematics.Random;
 
-
+// TODO: make scriptableObject
 public struct MoveSimParams
 {
+  public static MoveSimParams GetDefault() =>
+    new MoveSimParams
+    {
+      stateMin = new float3(-5, -5, -math.PI),
+      stateMax = new float3( 5,  5,  math.PI),
+      iterations = 50 * 5,
+      actionSpaceMin = new float2(0, -1),
+      actionSpaceMax = new float2(1, 1),
+      dt = 1 / 50f,
+      runCount = 25,
+      mlpShape = new MultiLayerPerception.Shape { inputSize = 4, hiddenSize = 6, outputSize = 4 }
+    };
+  
   public int iterations;
   public int runCount;
   public float dt;
   public float2 actionSpaceMin;
   public float2 actionSpaceMax;
+  public float3 stateMin;
+  public float3 stateMax;
+  public MultiLayerPerception.Shape mlpShape;
   public override string ToString()
   {
-    return $"iterations:{iterations}\n" +
-     $"runCount:{runCount}\n" +
-     $"dt:{dt}\n" +
-     $"actionSpace:{actionSpaceMin}-{actionSpaceMax}";
+    return $"MLP shape:{mlpShape}\n" +
+           $"iterations:{iterations}\n" +
+           $"runCount:{runCount}\n" +
+           $"stateSpace:{stateMin}-{stateMax}\n" +
+           $"dt:{dt}\n" +
+           $"actionSpace:{actionSpaceMin}-{actionSpaceMax}";
+
   }
 }
 public class MoveContext
@@ -46,14 +65,13 @@ public class MoveContext
   public IEnumerator _runCoro;
   public bool Finished { get; private set; } = false;
   public float Progress = 0;
-  public MoveContext(MoveSimParams simParams, MultiLayerPerception.Shape shape, float[] _weights, float3 stateMin, float3 stateMax)
-  {
+  public MoveContext(MoveSimParams simParams, float[] _weights) {
+    _simParams = simParams;
     _id = _idAllocator++;
     _log.AppendLine($"Created with ID {_id}.");
-    _mlpModel = new MultiLayerPerception(shape, Layer.FusedActivation.Relu6);
+    _mlpModel = new MultiLayerPerception(_simParams.mlpShape, Layer.FusedActivation.Relu6);
     _mlpModel.LoadWeights(_weights);
-    _simParams = simParams;
-    _runCoro = RateThread(stateMin, stateMax);
+    _runCoro = RateThread();
     _log.AppendLine($"Constructer finished.");
   }
 
@@ -72,9 +90,17 @@ public class MoveContext
 
   }
 
-  public bool Tick() => _runCoro.MoveNext(); 
-   
-  private IEnumerator RateThread(float3 stateMin, float3 stateMax)
+  public bool Tick() => _runCoro.MoveNext();
+
+  public static float3 GetRandomState(in MoveSimParams sim) {
+
+    float2 halfSize = (sim.stateMax.xy - sim.stateMin.xy) / 2;
+    float2 dir = _rndu.NextFloat2Direction();
+    return new float3(dir * _rndu.NextFloat(0.5f, 1) * halfSize,
+      _rndu.NextFloat(sim.stateMin.z, sim.stateMax.z));
+  }
+
+  private IEnumerator RateThread()
   {
     _log.AppendLine("RateThread Started.");
     var runMetrics = new List<MetricInfo>[_simParams.runCount];
@@ -88,9 +114,8 @@ public class MoveContext
     yield return null;
 
     float3[] states = new float3[_simParams.runCount];
-
     for (int iRun = 0; iRun < _simParams.runCount; iRun++)
-      states[iRun] = _rndu.NextFloat3(stateMin, stateMax);
+      states[iRun] = GetRandomState(in _simParams);
     _log.AppendLine("Variables Initialized.");
     for (int i = 0; i < _simParams.iterations; i++) {
       try {
@@ -166,15 +191,7 @@ public class AcademyMove : MonoBehaviour
   public static TensorCachingAllocator TensorAllocator { get; private set; }
   private GaussianGenerator _rndg = null;
 
-  public MoveSimParams _simParams = new MoveSimParams
-  {
-    iterations = 50*5,
-    actionSpaceMin = new float2(0, -1),
-    actionSpaceMax = new float2(1, 1),
-    dt = 1/ 50f,
-    runCount = 25
-  };
-  
+  public MoveSimParams _simParams = MoveSimParams.GetDefault();
   [Range(0.0000001f, 2)]
   public float _initLearnRate = 2;
   [Range(0.0000001f, .1f)]
@@ -183,9 +200,7 @@ public class AcademyMove : MonoBehaviour
   public bool _isGenerating = true;
   public bool _isMutatingBest = false;
 
-  public MultiLayerPerception.Shape _mlpShape = new MultiLayerPerception.Shape { inputSize = 4, hiddenSize = 4, outputSize = 4 };
-  public float3 _stateMin = new float3(-5, -5, -math.PI);
-  public float3 _stateMax = new float3(5, 5, math.PI);
+  
   public List<MoveContext> _currentGeneration = new List<MoveContext>();
   public int _generationSize = 100;
   private int _curGeneration = -1;
@@ -193,6 +208,7 @@ public class AcademyMove : MonoBehaviour
   {
     TensorAllocator = new TensorCachingAllocator();
     _rndg = new GaussianGenerator(new Random((uint)UnityEngine.Random.Range(0, int.MaxValue)));
+    Debug.Log(_simParams);
   }
 
   public void OnDisable() => TensorAllocator.Dispose();
@@ -207,34 +223,36 @@ public class AcademyMove : MonoBehaviour
   
   private void Update()
   {
-    if (_currentGeneration.Count == 0) {
-      _curGeneration++;
-      Debug.Log($"Creating Generation: {_curGeneration}");
-      for (int iContext = 0; iContext < _generationSize; iContext++) {
-        float[] weights = new float[_mlpShape.WeightCount];
-        for (int iWeight = 0; iWeight < weights.Length; iWeight++)
-          weights[iWeight] = _rndg.NextFloat1();
-        _currentGeneration.Add(new MoveContext(_simParams, _mlpShape, weights, _stateMin, _stateMax));
-        _currentGeneration[_currentGeneration.Count-1].Start();
-      }
-    } else{
-      Stopwatch stopwatch = new Stopwatch();
-      stopwatch.Start();
-      int tickCount = 0;
-      for (var index = 0; index < 10000; index++) {
-        var context = _currentGeneration[index%_currentGeneration.Count];
-        if(context.Finished)
-          continue;
-        if (!context.Tick()) {
-          GeneBankManager.Inst.Evaluate(context.Weights, context._metrics);
+    if (_isGenerating) {
+      if (_currentGeneration.Count == 0) {
+        _curGeneration++;
+        Debug.Log($"Creating Generation: {_curGeneration}");
+        for (int iContext = 0; iContext < _generationSize; iContext++) {
+          float[] weights = new float[_simParams.mlpShape.WeightCount];
+          for (int iWeight = 0; iWeight < weights.Length; iWeight++)
+            weights[iWeight] = _rndg.NextFloat1();
+          _currentGeneration.Add(new MoveContext(_simParams,  weights));
+          _currentGeneration[_currentGeneration.Count-1].Start();
+        }
+      } else{
+        Stopwatch stopwatch = new Stopwatch();
+        stopwatch.Start();
+        int tickCount = 0;
+        for (var index = 0; index < 10000; index++) {
+          var context = _currentGeneration[index%_currentGeneration.Count];
+          if(context.Finished)
+            continue;
+          if (!context.Tick()) {
+            GeneBankManager.Inst.Evaluate(context.Weights, context._metrics);
+          }
+
+          tickCount++;
+          if (stopwatch.ElapsedMilliseconds > 100)
+            break;
         }
 
-        tickCount++;
-        if (stopwatch.ElapsedMilliseconds > 100)
-          break;
+        _currentGeneration.RemoveAll(context => context.Finished);
       }
-
-      _currentGeneration.RemoveAll(context => context.Finished);
     }
   }
 

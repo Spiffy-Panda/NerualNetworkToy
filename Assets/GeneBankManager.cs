@@ -2,6 +2,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using Google.Protobuf.Reflection;
 using UnityEngine;
 // Based on a Pareto Frontier.
 // Which is the collection of points that 
@@ -29,10 +31,11 @@ public class GeneBankManager : MonoBehaviour
     }
   }
   private string runTag = null;
-
-  private void LogAdd(ParetoGeneBank.GeneInfo gi) => _addLog.WriteLine(gi.GetYamlEntry());
-  private void LogRemove(ParetoGeneBank.GeneInfo gi) => _remLog.WriteLine(gi.GetYamlEntry());
-
+  public PreloadGeneData _preloadData;
+  private void LogAdd(ParetoGeneBank.Genome gi) => _addLog.WriteLine(gi.GetYamlEntry());
+  private void LogRemove(ParetoGeneBank.Genome gi) => _remLog.WriteLine(gi.GetYamlEntry());
+  public int _dbgGenomeCount = -1;
+  public int GenomeCount => _geneBank.GenomeCount;
   public void Start()
   {
     runTag = $"Run{DateTime.Now:MMMdd_HHmm}";
@@ -52,6 +55,16 @@ public class GeneBankManager : MonoBehaviour
       _geneBank._GeneRemovedFromPool += (gi) => Debug.Log($"-{gi}");
     }
 
+    _geneBank._GeneAddedToPool += (gi) => _dbgGenomeCount = _geneBank.GenomeCount;
+    _geneBank._GeneRemovedFromPool += (gi) => _dbgGenomeCount = _geneBank.GenomeCount;
+
+    if (_preloadData != null) {
+      var preloadGenomes = _preloadData.GetData();
+      foreach (var gi in _preloadData.GetData()) {
+        _geneBank.Evaluate(gi);
+      }
+      Debug.Log($"Done Preloaded. Genebank Size: {_geneBank.GenomeCount} of {preloadGenomes.Length} from preload.");
+    }
   }
 
   public bool Evaluate(float[] weights, Dictionary<string, float> metrics)
@@ -60,9 +73,13 @@ public class GeneBankManager : MonoBehaviour
     return result;
   }
 
-  public ParetoGeneBank.GeneInfo GetRandomGenome()
+  public ParetoGeneBank.Genome GetRandomGenome()
   {
     return _geneBank.GetRandomGenome();
+  }
+
+  public ParetoGeneBank.Genome GetMinMetricGenome(string metricName) {
+    return _geneBank.Frontier.Aggregate((giA, giB) => giA._metrics[metricName] < giB._metrics[metricName]?giA:giB);
   }
 
   private void OnDisable()
