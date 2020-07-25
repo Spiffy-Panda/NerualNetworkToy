@@ -36,6 +36,7 @@ public class GeneBankManager : MonoBehaviour
   private void LogRemove(ParetoGeneBank.Genome gi) => _remLog.WriteLine(gi.GetYamlEntry());
   public int _dbgGenomeCount = -1;
   public int GenomeCount => _geneBank.GenomeCount;
+  public bool LoadDataOnStart = false;
   public void Start()
   {
     runTag = $"Run{DateTime.Now:MMMdd_HHmm}";
@@ -58,7 +59,8 @@ public class GeneBankManager : MonoBehaviour
     _geneBank._GeneAddedToPool += (gi) => _dbgGenomeCount = _geneBank.GenomeCount;
     _geneBank._GeneRemovedFromPool += (gi) => _dbgGenomeCount = _geneBank.GenomeCount;
 
-    if (_preloadData != null) {
+    if (_preloadData != null && LoadDataOnStart)
+    {
       var preloadGenomes = _preloadData.GetData();
       foreach (var gi in _preloadData.GetData()) {
         _geneBank.Evaluate(gi);
@@ -78,7 +80,13 @@ public class GeneBankManager : MonoBehaviour
     return _geneBank.GetRandomGenome();
   }
 
-  public ParetoGeneBank.Genome GetMinMetricGenome(string metricName) {
+  public ParetoGeneBank.Genome GetMinMetricGenome(string metricName, int idx) {
+    return _geneBank.Frontier.OrderBy(gi => gi._metrics[metricName]).ElementAt(idx);
+  }
+
+
+  public ParetoGeneBank.Genome GetMinMetricGenome(string metricName)
+  {
     return _geneBank.Frontier.Aggregate((giA, giB) => giA._metrics[metricName] < giB._metrics[metricName]?giA:giB);
   }
 

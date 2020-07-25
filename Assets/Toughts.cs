@@ -62,6 +62,7 @@ public class Toughts : Graphic
       }
       return _testMLP;
     }
+    set => _testMLP = value;
   }
   private void AddRect(VertexHelper vh, float2 pos, float2 size, Color clr)
   {

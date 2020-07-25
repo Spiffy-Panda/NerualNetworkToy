@@ -14,7 +14,7 @@ public class MoveToPointPreview : MonoBehaviour {
   public PeriodicUpdate _updater => GetComponent<PeriodicUpdate>();
   private float3[] _stateBuffer;
   private float2[] _actBuffer;
-  public float2 _targetPosition;
+  private float4[] _observeBuffer;
 
   public bool _moveTarget = true;
   private MoveSimParams _simParams = MoveSimParams.GetDefault();
@@ -24,31 +24,40 @@ public class MoveToPointPreview : MonoBehaviour {
     _updater.Updated += OnPeriodicUpdate;
     _stateBuffer = new float3[_simParams.iterations];
     _actBuffer = new float2[_simParams.iterations];
+    _observeBuffer = new float4[_simParams.iterations];
   }
 
+  public enum MetricName {
+    ClosestApproachMetric,
+    FinalDistanceMetric,
+    OverRotationMetric
+  };
   public float _startAngle;
+  [Range(0,20)]
+  public int SelectedGeneIdx = 0;
+
+  public MetricName SelectedMetric = MetricName.ClosestApproachMetric;
 
   public int CurrentIndex => (int) (_updater.TimeNormalized * _simParams.iterations);
   public float3 CurState => (_stateBuffer == null || _stateBuffer.Length != _simParams.iterations) ?0:_stateBuffer[CurrentIndex];
+  public const int runIdx = 0;
   void OnPeriodicUpdate() {
     if (GeneBankManager.Inst.GenomeCount <= 0)
       return;
-
+    
     float3 state = MoveContext.GetRandomState(in _simParams);
-    ParetoGeneBank.Genome gi =GeneBankManager.Inst.GetMinMetricGenome(ClosestApproachMetric.MetricName);
-    Debug.Log(gi);
+    ParetoGeneBank.Genome gi =GeneBankManager.Inst.GetMinMetricGenome(SelectedMetric.ToString(), SelectedGeneIdx% GeneBankManager.Inst.GenomeCount);
     MultiLayerPerception mlp = new MultiLayerPerception(_simParams.mlpShape, Layer.FusedActivation.Relu6);
     mlp.LoadWeights(gi._weights.ToArray());
     IWorker worker = WorkerFactory.CreateWorker(WorkerFactory.Type.Auto,mlp.model,false);
-    float2 obs = AcademyMove.Observe(state);
-    Debug.Log(_simParams);
     Tensor inTensor = new Tensor(1,_simParams.mlpShape.inputSize);
-    int runIdx = 0;
     
     for (int i = 0; i < _simParams.iterations; i++) {
-      for (int iINode = 0; iINode < _simParams.mlpShape.inputSize; iINode++) 
-        inTensor[runIdx, iINode] = (iINode < 2)? obs[iINode]: 0;
-
+      float2 obs = AcademyMove.Observe(state);
+      for (int iINode = 0; iINode < _simParams.mlpShape.inputSize; iINode++) {
+        _observeBuffer[i][iINode] = (iINode < 2) ? obs[iINode] : inTensor[runIdx, iINode];
+        inTensor[runIdx, iINode] = _observeBuffer[i][iINode];
+      }
       worker.SetInput(inTensor);
       worker.Execute().FlushSchedule(true);
       using (Tensor outTensor = worker.PeekOutput()) {
@@ -70,22 +79,14 @@ public class MoveToPointPreview : MonoBehaviour {
     }
     worker.Dispose();
     inTensor.Dispose();
-    //_Academy.PreviewBest(state,_targetPosition,_stateBuffer,_actBuffer);
-    //_NetDraw._TestMLP = _Academy._BestBrain as MLP;
+    _NetDraw._TestMLP = mlp;
   }
 
   Toughts _NetDraw => FindObjectOfType<Toughts>();
-  public float3 _curState = 0;
   public void Update() {
-    _curState = CurState;
-    //Tensor obsTensor = new Tensor(new int[] {1, 1, 1, 4});
-    //
-    //float2 obs = AcademyMove.Observe(new float3(_targetPosition-CurState.xy,CurState.z));
-    //obsTensor[0] = obs[0];
-    //obsTensor[1] = obs[1];
-    //_NetDraw._observe = obsTensor.ToReadOnlyArray();
-    //_NetDraw.SetAllDirty();
-    //obsTensor.Dispose();
+    float4 obs = _observeBuffer[CurrentIndex];
+    _NetDraw._observe = new []{obs.x,obs.y,obs.z,obs.w};
+    _NetDraw.SetAllDirty();
   }
 
   public void OnDrawGizmos() {
@@ -98,7 +99,7 @@ public class MoveToPointPreview : MonoBehaviour {
     Gizmos.DrawSphere((Vector2)CurState.xy, 0.1f);
     Gizmos.DrawRay((Vector2)CurState.xy,new Vector3(Mathf.Cos(CurState.z), Mathf.Sin(CurState.z)));
     Gizmos.color = Color.red;
-    Gizmos.DrawSphere((Vector2)_targetPosition.xy,0.2f);
+    Gizmos.DrawSphere(Vector3.zero,0.06f);
     Gizmos.color = Color.green;
     for (int i = 1; i < _stateBuffer.Length; i++)
     {

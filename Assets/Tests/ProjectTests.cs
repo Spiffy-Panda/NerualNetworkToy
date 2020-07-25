@@ -119,6 +119,7 @@ public class TensorTest
     }
     tca.Dispose();
     ex.Dispose();
+    worker.Dispose();
     Debug.Assert(true); // Just getting here is good enough
   }
 
@@ -147,6 +148,7 @@ public class TensorTest
     }
     tca.Dispose();
     ex.Dispose();
+    worker.Dispose();
     Debug.Assert(true);
   }
   [Test]
@@ -222,6 +224,7 @@ public class TensorTest
     }
     tca.Dispose();
     ex.Dispose();
+    worker.Dispose();
     Debug.Assert(true);
   }
   [Test]

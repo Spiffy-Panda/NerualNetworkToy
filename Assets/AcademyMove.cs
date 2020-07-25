@@ -15,19 +15,19 @@ using Debug = UnityEngine.Debug;
 using Random = Unity.Mathematics.Random;
 
 // TODO: make scriptableObject
-public struct MoveSimParams
-{
+public struct MoveSimParams {
+  private const int kFPS = 10;
   public static MoveSimParams GetDefault() =>
     new MoveSimParams
     {
       stateMin = new float3(-5, -5, -math.PI),
       stateMax = new float3( 5,  5,  math.PI),
-      iterations = 50 * 5,
+      iterations = kFPS * 5,
+      dt = 1f / kFPS,
       actionSpaceMin = new float2(0, -1),
       actionSpaceMax = new float2(1, 1),
-      dt = 1 / 50f,
-      runCount = 25,
-      mlpShape = new MultiLayerPerception.Shape { inputSize = 4, hiddenSize = 6, outputSize = 4 }
+      runCount = 50,
+      mlpShape = new MultiLayerPerception.Shape { inputSize = 4, hiddenSize = 3, outputSize = 4 }
     };
   
   public int iterations;
@@ -61,7 +61,7 @@ public class MoveContext
   public StringBuilder _log = new StringBuilder();
   public Dictionary<string,float> _metrics;
   public IWorker _worker;
-  public Tensor inTensor;
+  public Tensor _inTensor;
   public IEnumerator _runCoro;
   public bool Finished { get; private set; } = false;
   public float Progress = 0;
@@ -74,22 +74,6 @@ public class MoveContext
     _runCoro = RateThread();
     _log.AppendLine($"Constructer finished.");
   }
-
-  public void Start()
-  {
-    _log.AppendLine($"Start Called");
-    _log.AppendLine("Creating Worker");
-    inTensor = AcademyMove.TensorAllocator.Alloc(new TensorShape(_simParams.runCount, _mlpModel._shape.inputSize));
-    inTensor.name = "inTensor_"+_id;
-
-
-    
-    _worker= WorkerFactory.CreateWorker(WorkerFactory.Type.ComputePrecompiled, _mlpModel.model,false);
-    //_worker = WorkerFactory.CreateWorker(_mlpModel.model, WorkerFactory.Device.GPU);
-    _log.AppendLine("Worker Created");
-
-  }
-
   public bool Tick() => _runCoro.MoveNext();
 
   public static float3 GetRandomState(in MoveSimParams sim) {
@@ -102,6 +86,17 @@ public class MoveContext
 
   private IEnumerator RateThread()
   {
+    _log.AppendLine($"Start Called");
+    _log.AppendLine("Creating Worker");
+    _inTensor = AcademyMove.TensorAllocator.Alloc(new TensorShape(_simParams.runCount, _mlpModel._shape.inputSize));
+    _inTensor.name = "inTensor_"+_id;
+
+
+    
+    _worker= WorkerFactory.CreateWorker(WorkerFactory.Type.ComputePrecompiled, _mlpModel.model,verbose:false);
+    //_worker = WorkerFactory.CreateWorker(_mlpModel.model, WorkerFactory.Device.GPU);
+    _log.AppendLine("Worker Created");
+
     _log.AppendLine("RateThread Started.");
     var runMetrics = new List<MetricInfo>[_simParams.runCount];
     for (int iRun = 0; iRun < _simParams.runCount; iRun++) {
@@ -112,17 +107,20 @@ public class MoveContext
     }
       
     yield return null;
+    if (_worker == null)
+      yield break;
 
     float3[] states = new float3[_simParams.runCount];
     for (int iRun = 0; iRun < _simParams.runCount; iRun++)
       states[iRun] = GetRandomState(in _simParams);
     _log.AppendLine("Variables Initialized.");
+    float2 actAvg = 0;
     for (int i = 0; i < _simParams.iterations; i++) {
       try {
         for (int iRun = 0; iRun < _simParams.runCount; iRun++) {
           float2 obs = AcademyMove.Observe(states[iRun]);
-          inTensor[iRun, 0] = obs.x;
-          inTensor[iRun, 1] = obs.y;
+          _inTensor[iRun, 0] = obs.x;
+          _inTensor[iRun, 1] = obs.y;
         }
       }
       catch (Exception e) {
@@ -131,11 +129,16 @@ public class MoveContext
         throw;
       }
 
-      _worker.SetInput(inTensor);
+      _worker.SetInput(_inTensor);
       yield return null;
+      if(_worker == null)
+        yield break;
+
       _worker.Execute().FlushSchedule(true);
       while (_worker.scheduleProgress < 1)
         yield return null;
+      if (_worker == null)
+        yield break;
 
 
       using (Tensor outTensor = _worker.PeekOutput()) {
@@ -147,11 +150,11 @@ public class MoveContext
           Debug.Assert(0 <= outTensor[iRun, 1] && outTensor[iRun, 1] <= 6);
           act.x = math.remap(0, 6, 0, 1, outTensor[iRun, 0]);
           act.y = math.remap(0, 6, -1, 1, outTensor[iRun, 1]);
-          ;
-          inTensor[iRun, 2] = outTensor[iRun, 2];
-          inTensor[iRun, 3] = outTensor[iRun, 3];
+          _inTensor[iRun, 2] = outTensor[iRun, 2];
+          _inTensor[iRun, 3] = outTensor[iRun, 3];
           float2 dir = new float2(math.cos(states[iRun].z), math.sin(states[iRun].z));
           act = math.clamp(act, _simParams.actionSpaceMin, _simParams.actionSpaceMax);
+          actAvg += act;
           states[iRun].z += act.y * _simParams.dt;
           states[iRun].xy += dir * act.x * _simParams.dt;
 
@@ -163,7 +166,7 @@ public class MoveContext
 
       Progress = (i+1f) / _simParams.iterations;
     }
-
+    _log.AppendLine($"avg = {actAvg/_simParams.iterations}");
     _log.AppendLine("Iterations Over.");
 
     _metrics = runMetrics[0].ToDictionary(mi => mi.Name, mi=>0f);
@@ -172,14 +175,18 @@ public class MoveContext
         _metrics[metricInfo.Name] += metricInfo.TotalValue;
       }
     }
-
-
+    Terminate();
     _log.AppendLine("Done");
-    inTensor.Dispose();
-    _worker.Dispose();
-    _log.AppendLine("Worker disposed of.");
     Finished = true;
 
+  }
+
+  public void Terminate() {
+    _inTensor?.Dispose();
+    _inTensor = null;
+    _worker?.Dispose();
+    _worker = null;
+    _log.AppendLine("Worker disposed of.");
   }
 
 }
@@ -209,9 +216,17 @@ public class AcademyMove : MonoBehaviour
     TensorAllocator = new TensorCachingAllocator();
     _rndg = new GaussianGenerator(new Random((uint)UnityEngine.Random.Range(0, int.MaxValue)));
     Debug.Log(_simParams);
-  }
+  } 
 
-  public void OnDisable() => TensorAllocator.Dispose();
+  public void OnDisable() {
+    foreach (var moveContext in _currentGeneration) {
+      moveContext.Terminate();
+    }
+
+    _currentGeneration = null;
+    TensorAllocator.Dispose();
+    TensorAllocator = null;
+  }
 
   public static float2 Observe(float3 state)
   {
@@ -232,7 +247,6 @@ public class AcademyMove : MonoBehaviour
           for (int iWeight = 0; iWeight < weights.Length; iWeight++)
             weights[iWeight] = _rndg.NextFloat1();
           _currentGeneration.Add(new MoveContext(_simParams,  weights));
-          _currentGeneration[_currentGeneration.Count-1].Start();
         }
       } else{
         Stopwatch stopwatch = new Stopwatch();
