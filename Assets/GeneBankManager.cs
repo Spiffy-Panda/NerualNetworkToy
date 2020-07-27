@@ -90,6 +90,11 @@ public class GeneBankManager : MonoBehaviour
     return _geneBank.Frontier.Aggregate((giA, giB) => giA._metrics[metricName] < giB._metrics[metricName]?giA:giB);
   }
 
+  public ParetoGeneBank.Genome[] GetAllGenome()
+  {
+    return _geneBank.Frontier.ToArray();
+  }
+
   private void OnDisable()
   {
     if (_addLog != null)

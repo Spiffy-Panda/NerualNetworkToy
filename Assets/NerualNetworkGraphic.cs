@@ -7,7 +7,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Random = Unity.Mathematics.Random;
 
-public class Toughts : Graphic
+public class NerualNetworkGraphic : Graphic
 {
   private readonly MoveToPointPreview _preview;
   private readonly AcademyMove _academy;
@@ -35,7 +35,7 @@ public class Toughts : Graphic
   Color ActNodeColor(float a) => TurboColorMap.Map(math.unlerp(_actNodeMinMax.x, _actNodeMinMax.y, a));
 
   public string _MLPJson = "";
-
+  public int3 _testNNShape = new int3(3, 3, 3);
   [ContextMenu("LoadAgent")]
   public void LoadAgent()
   {
@@ -51,9 +51,9 @@ public class Toughts : Graphic
       if (_testMLP == null)
       {
         var shape = new MultiLayerPerception.Shape{
-          inputSize = 5,
-          outputSize = 4,
-          hiddenSize = 2
+          inputSize = _testNNShape.x,
+          hiddenSize = _testNNShape.y,
+          outputSize = _testNNShape.z,
         };
         _testMLP = new MultiLayerPerception(shape, Layer.FusedActivation.Relu6);
         Random rndu = new Random((uint)UnityEngine.Random.Range(0, int.MaxValue));

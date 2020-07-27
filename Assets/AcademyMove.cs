@@ -27,7 +27,7 @@ public struct MoveSimParams {
       actionSpaceMin = new float2(0, -1),
       actionSpaceMax = new float2(1, 1),
       runCount = 50,
-      mlpShape = new MultiLayerPerception.Shape { inputSize = 4, hiddenSize = 3, outputSize = 4 }
+      mlpShape = new MultiLayerPerception.Shape { inputSize = 3, hiddenSize = 3, outputSize = 3 }
     };
   
   public int iterations;
@@ -151,7 +151,6 @@ public class MoveContext
           act.x = math.remap(0, 6, 0, 1, outTensor[iRun, 0]);
           act.y = math.remap(0, 6, -1, 1, outTensor[iRun, 1]);
           _inTensor[iRun, 2] = outTensor[iRun, 2];
-          _inTensor[iRun, 3] = outTensor[iRun, 3];
           float2 dir = new float2(math.cos(states[iRun].z), math.sin(states[iRun].z));
           act = math.clamp(act, _simParams.actionSpaceMin, _simParams.actionSpaceMax);
           actAvg += act;
@@ -211,6 +210,7 @@ public class AcademyMove : MonoBehaviour
   public List<MoveContext> _currentGeneration = new List<MoveContext>();
   public int _generationSize = 100;
   private int _curGeneration = -1;
+  public event Action _NewGeneration;
   public void Start()
   {
     TensorAllocator = new TensorCachingAllocator();
@@ -248,6 +248,7 @@ public class AcademyMove : MonoBehaviour
             weights[iWeight] = _rndg.NextFloat1();
           _currentGeneration.Add(new MoveContext(_simParams,  weights));
         }
+        _NewGeneration?.Invoke();
       } else{
         Stopwatch stopwatch = new Stopwatch();
         stopwatch.Start();

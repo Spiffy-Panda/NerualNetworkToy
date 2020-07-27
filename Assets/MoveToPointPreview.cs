@@ -67,8 +67,8 @@ public class MoveToPointPreview : MonoBehaviour {
         act.x = math.remap(0, 6, 0, 1, outTensor[runIdx, 0]);
         act.y = math.remap(0, 6, -1, 1, outTensor[runIdx, 1]);
 
-        inTensor[runIdx, 2] = outTensor[runIdx, 2];
-        inTensor[runIdx, 3] = outTensor[runIdx, 3];
+        for (int iINode = 2; iINode < _simParams.mlpShape.inputSize; iINode++)
+          inTensor[runIdx, iINode] = outTensor[runIdx, iINode];
         float2 dir = new float2(math.cos(state.z), math.sin(state.z));
         act = math.clamp(act, _simParams.actionSpaceMin, _simParams.actionSpaceMax);
         _actBuffer[i] = act;
@@ -82,7 +82,7 @@ public class MoveToPointPreview : MonoBehaviour {
     _NetDraw._TestMLP = mlp;
   }
 
-  Toughts _NetDraw => FindObjectOfType<Toughts>();
+  NerualNetworkGraphic _NetDraw => FindObjectOfType<NerualNetworkGraphic>();
   public void Update() {
     float4 obs = _observeBuffer[CurrentIndex];
     _NetDraw._observe = new []{obs.x,obs.y,obs.z,obs.w};
