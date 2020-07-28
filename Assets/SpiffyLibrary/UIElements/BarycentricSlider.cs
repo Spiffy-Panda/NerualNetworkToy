@@ -54,39 +54,26 @@ using static Unity.Mathematics.math;
       // This is the inverse of the mul used in NsFromBS, which can be seen as a weighted average.
       return  mul(inverse(mat), ns1);
     }
+
+    public Action Clicked; 
     public BarycentricSlider()
     {
       generateVisualContent += OnGenerateVisualContent;
       RegisterCallback<MouseDownEvent>(OnClick);
     }
 
-    void OnClick(MouseDownEvent evt) {
+    protected virtual void OnClick(MouseDownEvent evt) {
       var mpos_ls = evt.localMousePosition;
       _mpos_ns = T_NsFromLs(mpos_ls);
       bool valid = _mpos_ns.y > abs(_mpos_ns.x * 2 - 1);
       if (valid) {
         _value_bs = T_BsFromNs(_mpos_ns);
+        Clicked?.Invoke();
         MarkDirtyRepaint();
       }
 
     }
-    void OnGenerateVisualContent(MeshGenerationContext cxt)
-    {
-      List<Vertex> vertices = new List<Vertex>();
-      List<ushort> indices = new List<ushort>();
-
-      { // Background Triangle
-        for (int iTriVtx = 0; iTriVtx < 3; iTriVtx++) {
-          Vertex vtx = new Vertex();
-          vtx.position = (Vector2)T_LsFromNs(TriangleMat[iTriVtx]);
-          vtx.tint = _pallet[iTriVtx];
-          vertices.Add(vtx);
-        }
-        indices.AddRange(new ushort[]{ 2,1,0});
-      }
-
-
-      void AddPoint(float2 pnt_ns, float2 size ,Color clr) {
+    protected void AddPoint(List<Vertex> vertices, List<ushort> indices, float2 pnt_ns, float2 size ,Color clr) {
         float2 pnt_ls = T_LsFromNs(pnt_ns);
         int vtxOffset = (int)vertices.Count;
         float2[] pos = new float2[] {
@@ -112,7 +99,23 @@ using static Unity.Mathematics.math;
         indices.Add((ushort)(vtxOffset + 0));
         indices.Add((ushort)(vtxOffset + 4));
       }
-      AddPoint(T_NsFromBs(_value_bs), cmin(layout.size / 30), Color.white);
+    protected virtual void OnGenerateVisualContent(MeshGenerationContext cxt)
+    {
+      List<Vertex> vertices = new List<Vertex>();
+      List<ushort> indices = new List<ushort>();
+
+      { // Background Triangle
+        for (int iTriVtx = 0; iTriVtx < 3; iTriVtx++) {
+          Vertex vtx = new Vertex();
+          vtx.position = (Vector2)T_LsFromNs(TriangleMat[iTriVtx]);
+          vtx.tint = _pallet[iTriVtx];
+          vertices.Add(vtx);
+        }
+        indices.AddRange(new ushort[]{ 2,1,0});
+      }
+
+
+      AddPoint(vertices,indices,T_NsFromBs(_value_bs), cmin(layout.size / 30), Color.white);
 
       MeshWriteData meshData = cxt.Allocate(vertices.Count, indices.Count);
       meshData.SetAllVertices(vertices.ToArray());

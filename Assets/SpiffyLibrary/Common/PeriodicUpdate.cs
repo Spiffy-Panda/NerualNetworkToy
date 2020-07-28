@@ -15,12 +15,17 @@ namespace SpiffyLibrary
     private void Update()
     {
       TimeIntoPeriod += Time.deltaTime;
-      if (TimeIntoPeriod > _period)
+      if (TimeIntoPeriod >= _period)
       {
         TimeIntoPeriod -= _period;
         Updated?.Invoke();
       }
 
+    }
+
+    public void MarkTrigger() {
+      if (TimeIntoPeriod < _period)
+        TimeIntoPeriod = _period;
     }
   }
 }

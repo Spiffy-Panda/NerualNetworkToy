@@ -33,11 +33,8 @@ public class MoveToPointPreview : MonoBehaviour {
     OverRotationMetric
   };
   public float _startAngle;
-  [Range(0,20)]
-  public int SelectedGeneIdx = 0;
-
-  public MetricName SelectedMetric = MetricName.ClosestApproachMetric;
-
+  [Range(0,50)]
+  public int SelectedGeneId = 0;
   public int CurrentIndex => (int) (_updater.TimeNormalized * _simParams.iterations);
   public float3 CurState => (_stateBuffer == null || _stateBuffer.Length != _simParams.iterations) ?0:_stateBuffer[CurrentIndex];
   public const int runIdx = 0;
@@ -46,7 +43,9 @@ public class MoveToPointPreview : MonoBehaviour {
       return;
     
     float3 state = MoveContext.GetRandomState(in _simParams);
-    ParetoGeneBank.Genome gi =GeneBankManager.Inst.GetMinMetricGenome(SelectedMetric.ToString(), SelectedGeneIdx% GeneBankManager.Inst.GenomeCount);
+    ParetoGeneBank.Genome gi =GeneBankManager.Inst.GetGenomeByID(SelectedGeneId);
+    if (gi == null)
+      return;
     MultiLayerPerception mlp = new MultiLayerPerception(_simParams.mlpShape, Layer.FusedActivation.Relu6);
     mlp.LoadWeights(gi._weights.ToArray());
     IWorker worker = WorkerFactory.CreateWorker(WorkerFactory.Type.Auto,mlp.model,false);
@@ -79,11 +78,14 @@ public class MoveToPointPreview : MonoBehaviour {
     }
     worker.Dispose();
     inTensor.Dispose();
-    _NetDraw._TestMLP = mlp;
+    if (_NetDraw)
+      _NetDraw._TestMLP = mlp;
   }
 
   NerualNetworkGraphic _NetDraw => FindObjectOfType<NerualNetworkGraphic>();
   public void Update() {
+    if (_NetDraw == null)
+      return;
     float4 obs = _observeBuffer[CurrentIndex];
     _NetDraw._observe = new []{obs.x,obs.y,obs.z,obs.w};
     _NetDraw.SetAllDirty();

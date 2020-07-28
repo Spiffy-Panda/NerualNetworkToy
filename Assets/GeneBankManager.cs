@@ -79,6 +79,11 @@ public class GeneBankManager : MonoBehaviour
   {
     return _geneBank.GetRandomGenome();
   }
+  public ParetoGeneBank.Genome GetGenomeByID(int id)
+  {
+    var result = _geneBank.Frontier.FirstOrDefault(gi => gi._id == id);
+    return result;
+  }
 
   public ParetoGeneBank.Genome GetMinMetricGenome(string metricName, int idx) {
     return _geneBank.Frontier.OrderBy(gi => gi._metrics[metricName]).ElementAt(idx);
@@ -87,7 +92,7 @@ public class GeneBankManager : MonoBehaviour
 
   public ParetoGeneBank.Genome GetMinMetricGenome(string metricName)
   {
-    return _geneBank.Frontier.Aggregate((giA, giB) => giA._metrics[metricName] < giB._metrics[metricName]?giA:giB);
+    return _geneBank.Frontier.Aggregate((giA, giB) => giA._metrics[metricName] < giB._metrics[metricName] ? giA : giB);
   }
 
   public ParetoGeneBank.Genome[] GetAllGenome()
@@ -111,7 +116,9 @@ public class GeneBankManager : MonoBehaviour
     }
     string ymlFrountier = _geneBank.GetYAML();
     Debug.Log(ymlFrountier);
-    File.WriteAllText($"OutputData/{runTag}_FinalGenes.yaml", ymlFrountier);
+
+    if (_logChangesToFile)
+      File.WriteAllText($"OutputData/{runTag}_FinalGenes.yaml", ymlFrountier);
   }
 
 }

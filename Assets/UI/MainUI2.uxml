@@ -1,8 +1,16 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
-    <ui:VisualElement>
-        <ui:VisualElement style="align-items: flex-start; height: 926px; width: 564.6667px; background-color: rgba(171, 171, 171, 255); justify-content: space-between;">
-            <ui:Slider picking-mode="Ignore" label="Slider" value="42" high-value="100" style="height: 201.6667px; width: 536.6666px;" />
-            <SpiffyLibrary.UIElements.BarycentricSlider style="height: 294px; width: 538px;" />
+    <ui:VisualElement style="align-items: flex-start; justify-content: center; height: 100%; width: 100%;">
+        <ui:VisualElement style="align-items: flex-start; height: 100%; width: 37.5%; background-color: rgb(171, 171, 171); justify-content: space-between;">
+            <ui:VisualElement style="height: 550px; width: 600px;">
+                <ui:ScrollView>
+                    <ui:Label text="Label" />
+                </ui:ScrollView>
+            </ui:VisualElement>
+            <ui:VisualElement style="height: 200px; width: 600px; background-color: rgba(89, 89, 89, 255);" />
+            <ui:VisualElement style="height: 215.2px; width: 597.2px; justify-content: center; align-items: stretch; flex-direction: row;">
+                <SpiffyLibrary.UIElements.BarycentricSlider style="height: 100%; width: 50%;" />
+                <ProjectUI.ParetoBarycentricMap name="ParetoBarycentricMap" style="height: 100%; width: 50%;" />
+            </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>
