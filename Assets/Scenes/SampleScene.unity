@@ -158,7 +158,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _initLearnRate: 2
   _mutaLearnRate: 0.1
-  _isGenerating: 1
+  _isGenerating: 0
   _isMutatingBest: 0
   _generationSize: 100
 --- !u!4 &48670680
@@ -427,11 +427,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 183a6d13832362b4b999813cf931a0cf, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _logChangesToFile: 1
+  _logChangesToFile: 0
   _logChangesToConsole: 0
   _preloadData: {fileID: 11400000, guid: 2a837b03129d7874595ecb3237e7f217, type: 2}
   _dbgGenomeCount: -1
-  LoadDataOnStart: 0
+  LoadDataOnStart: 1
 --- !u!4 &410152989
 Transform:
   m_ObjectHideFlags: 0
@@ -610,8 +610,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _moveTarget: 1
   _startAngle: 0
-  SelectedGeneIdx: 0
-  SelectedMetric: 0
+  SelectedGeneId: 0
 --- !u!114 &692608849
 MonoBehaviour:
   m_ObjectHideFlags: 0

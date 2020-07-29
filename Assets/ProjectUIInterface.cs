@@ -5,29 +5,49 @@ using SpiffyLibrary;
 using UnityEngine;
 using UnityEngine.UIElements;
 
+public static class UIStrings {
+  public static class Names {
+    public const string PreviewSelection = "PreviewSelection";
+    public const string SelectedParent = "SelectedParent";
+  }
+}
+
 public class ProjectUIInterface : MonoBehaviour {
   public VisualElement _root;
 
   public RenderTexture _texture;
 
-  private ParetoBarycentricMap baryMap;
+  private ParetoBarycentricMap _previewSelectionMap;
+  private ParetoBarycentricMap _parentSelectionMap;
   // Start is called before the first frame update
   void Start() {
     _root = GetComponent<UIDocument>().rootVisualElement;
-    baryMap = _root.Q(name: "ParetoBarycentricMap") as ParetoBarycentricMap;
-    if(baryMap!=null)
-      baryMap.Clicked +=Clicked;
+    _previewSelectionMap = _root.Q(name: UIStrings.Names.PreviewSelection) as ParetoBarycentricMap;
+    _parentSelectionMap  = _root.Q(name: UIStrings.Names.SelectedParent) as ParetoBarycentricMap;
+
+    if(_previewSelectionMap!=null)
+      _previewSelectionMap.Clicked +=PreviewMapClicked;
+    if (_parentSelectionMap != null)
+      _parentSelectionMap.Clicked += ParentMapClicked;
   }
 
-  private void Clicked() {
+  private void PreviewMapClicked()
+  {
     var preview = FindObjectOfType<MoveToPointPreview>();
-    if (baryMap.Value_ID >= 0)
-      preview.SelectedGeneId = baryMap.Value_ID;
+    if (_previewSelectionMap.Value_ID >= 0)
+      preview.SelectedGeneId = _previewSelectionMap.Value_ID;
+    preview.GetComponent<PeriodicUpdate>()?.MarkTrigger();
+  }
+  private void ParentMapClicked()
+  {
+    var preview = FindObjectOfType<MoveToPointPreview>();
+    if (_previewSelectionMap.Value_ID >= 0)
+      preview.SelectedGeneId = _previewSelectionMap.Value_ID;
     preview.GetComponent<PeriodicUpdate>()?.MarkTrigger();
   }
 
   // Update is called once per frame
-    void Update()
+  void Update()
     {
         
     }

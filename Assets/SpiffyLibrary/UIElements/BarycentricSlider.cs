@@ -62,12 +62,15 @@ using static Unity.Mathematics.math;
       RegisterCallback<MouseDownEvent>(OnClick);
     }
 
+    protected virtual void CalcAdditionalValues() { }
+
     protected virtual void OnClick(MouseDownEvent evt) {
       var mpos_ls = evt.localMousePosition;
       _mpos_ns = T_NsFromLs(mpos_ls);
       bool valid = _mpos_ns.y > abs(_mpos_ns.x * 2 - 1);
       if (valid) {
         _value_bs = T_BsFromNs(_mpos_ns);
+        CalcAdditionalValues();
         Clicked?.Invoke();
         MarkDirtyRepaint();
       }

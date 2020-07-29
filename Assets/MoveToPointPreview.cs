@@ -35,7 +35,7 @@ public class MoveToPointPreview : MonoBehaviour {
   public float _startAngle;
   [Range(0,50)]
   public int SelectedGeneId = 0;
-  public int CurrentIndex => (int) (_updater.TimeNormalized * _simParams.iterations);
+  public int CurrentIndex => (int) (_updater.TimeNormalized * _simParams.iterations-1);
   public float3 CurState => (_stateBuffer == null || _stateBuffer.Length != _simParams.iterations) ?0:_stateBuffer[CurrentIndex];
   public const int runIdx = 0;
   void OnPeriodicUpdate() {
@@ -44,6 +44,7 @@ public class MoveToPointPreview : MonoBehaviour {
     
     float3 state = MoveContext.GetRandomState(in _simParams);
     ParetoGeneBank.Genome gi =GeneBankManager.Inst.GetGenomeByID(SelectedGeneId);
+    Debug.Log(SelectedGeneId);
     if (gi == null)
       return;
     MultiLayerPerception mlp = new MultiLayerPerception(_simParams.mlpShape, Layer.FusedActivation.Relu6);

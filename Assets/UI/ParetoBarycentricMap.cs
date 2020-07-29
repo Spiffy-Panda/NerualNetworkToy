@@ -21,8 +21,7 @@ namespace  ProjectUI {
       ).Key;
 
 
-    protected override void OnClick(MouseDownEvent evt) {
-      base.OnClick(evt);
+    protected override void CalcAdditionalValues() {
       Value_ID = GetClosestGenome(_value_bs);
     }
 
@@ -106,6 +105,8 @@ namespace  ProjectUI {
       Dictionary<int, Color> clrLookup = new Dictionary<int, Color>();
       metricVecLookup.Clear();
       float hue = 0;
+      float3 minMetric = float.PositiveInfinity;
+      float3 maxMetric = float.NegativeInfinity;
       foreach (var genome in genomes) {
         clrLookup[genome._id] = Color.HSVToRGB(hue%1f,1,1);
         hue += 0.618f;
@@ -113,8 +114,14 @@ namespace  ProjectUI {
         for (int iMetric = 0; iMetric < _metricNames.Length; iMetric++)
           metricVector[iMetric] = genome._metrics[_metricNames[iMetric]];
         metricVecLookup[genome._id] = metricVector;
+        minMetric = math.min(minMetric, metricVecLookup[genome._id]);
+        maxMetric = math.max(maxMetric, metricVecLookup[genome._id]);
       }
       
+      foreach (var key in metricVecLookup.Keys.ToArray()) {
+        float3 val = math.unlerp(minMetric, maxMetric, metricVecLookup[key]);
+        metricVecLookup[key] = val;
+      }
       for (int iVtx = 0; iVtx < vertices.Count; iVtx++) {
         var vtx= vertices[iVtx];
         var pntBS = T_BsFromNs(T_NsFromLs(((float3)vtx.position).xy));

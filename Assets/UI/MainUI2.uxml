@@ -6,10 +6,10 @@
                     <ui:Label text="Label" />
                 </ui:ScrollView>
             </ui:VisualElement>
-            <ui:VisualElement style="height: 200px; width: 600px; background-color: rgba(89, 89, 89, 255);" />
+            <ui:VisualElement style="height: 200px; width: 600px; background-color: rgb(89, 89, 89);" />
             <ui:VisualElement style="height: 215.2px; width: 597.2px; justify-content: center; align-items: stretch; flex-direction: row;">
-                <SpiffyLibrary.UIElements.BarycentricSlider style="height: 100%; width: 50%;" />
-                <ProjectUI.ParetoBarycentricMap name="ParetoBarycentricMap" style="height: 100%; width: 50%;" />
+                <ProjectUI.ParetoBarycentricMap name="SelectedParent" style="height: 100%; width: 50%;" />
+                <ProjectUI.ParetoBarycentricMap name="PreviewSelection" style="height: 100%; width: 50%;" />
             </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>
