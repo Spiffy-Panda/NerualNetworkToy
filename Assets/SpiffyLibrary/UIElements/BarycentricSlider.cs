@@ -5,7 +5,21 @@ using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace SpiffyLibrary.UIElements {
-using static Unity.Mathematics.math;
+  using static Unity.Mathematics.math;
+  public class MeshParts {
+    public List<Vertex> vertices = new List<Vertex>();
+    public List<int3> triangles = new List<int3>();
+    public int IndicesCount => triangles.Count * 3;
+    public ushort[] GetIndices() {
+      ushort[] result = new ushort[triangles.Count * 3];
+      for (var iTri = 0; iTri < triangles.Count; iTri++) { 
+        for (int iDim = 0; iDim < 3; iDim++) {
+          result[iTri* 3 + iDim] = (ushort)triangles[iTri][iDim];
+        }
+      }
+      return result;
+    }
+  }
   public class BarycentricSlider : VisualElement {
     public new class UxmlFactory : UxmlFactory<BarycentricSlider, UxmlTraits> {
     }
@@ -76,53 +90,45 @@ using static Unity.Mathematics.math;
       }
 
     }
-    protected void AddPoint(List<Vertex> vertices, List<ushort> indices, float2 pnt_ns, float2 size ,Color clr) {
-        float2 pnt_ls = T_LsFromNs(pnt_ns);
-        int vtxOffset = (int)vertices.Count;
-        float2[] pos = new float2[] {
-          pnt_ls,
-          pnt_ls + new float2(-1,-1) * size,
-          pnt_ls + new float2(-1, 1) * size,
-          pnt_ls + new float2( 1, 1) * size,
-          pnt_ls + new float2( 1,-1) * size,
-        };
-        for (int iPointVtx = 0; iPointVtx < pos.Length; iPointVtx++)
-        {
-          Vertex vtx = new Vertex();
-          vtx.tint = clr;
-          vtx.position = (Vector2)pos[iPointVtx];
-          vertices.Add(vtx);
-        }
-
-        indices.Add((ushort)(vtxOffset + 1));
-        indices.Add((ushort)(vtxOffset + 0));
-        indices.Add((ushort)(vtxOffset + 2));
-
-        indices.Add((ushort)(vtxOffset + 3));
-        indices.Add((ushort)(vtxOffset + 0));
-        indices.Add((ushort)(vtxOffset + 4));
+    protected void AddPoint(MeshParts mp, float2 pnt_ns, float2 size ,Color clr) {
+      float2 pnt_ls = T_LsFromNs(pnt_ns);
+      int vtxOffset = (int)mp.vertices.Count;
+      float2[] pos = new float2[] {
+        pnt_ls,
+        pnt_ls + new float2(-1,-1) * size,
+        pnt_ls + new float2(-1, 1) * size,
+        pnt_ls + new float2( 1, 1) * size,
+        pnt_ls + new float2( 1,-1) * size,
+      };
+      for (int iPointVtx = 0; iPointVtx < pos.Length; iPointVtx++)
+      {
+        Vertex vtx = new Vertex();
+        vtx.tint = clr;
+        vtx.position = (Vector2)pos[iPointVtx];
+        mp.vertices.Add(vtx);
+      }
+      mp.triangles.Add(vtxOffset + new int3(1, 0, 2));
+      mp.triangles.Add(vtxOffset + new int3(3, 0, 4));
       }
     protected virtual void OnGenerateVisualContent(MeshGenerationContext cxt)
     {
-      List<Vertex> vertices = new List<Vertex>();
-      List<ushort> indices = new List<ushort>();
-
+      MeshParts mp = new MeshParts();
       { // Background Triangle
         for (int iTriVtx = 0; iTriVtx < 3; iTriVtx++) {
           Vertex vtx = new Vertex();
           vtx.position = (Vector2)T_LsFromNs(TriangleMat[iTriVtx]);
           vtx.tint = _pallet[iTriVtx];
-          vertices.Add(vtx);
+          mp.vertices.Add(vtx);
         }
-        indices.AddRange(new ushort[]{ 2,1,0});
+        mp.triangles.Add(new int3(2,1,0));
       }
 
+      AddPoint(mp,T_NsFromBs(_value_bs), cmin(layout.size / 30), Color.white);
 
-      AddPoint(vertices,indices,T_NsFromBs(_value_bs), cmin(layout.size / 30), Color.white);
 
-      MeshWriteData meshData = cxt.Allocate(vertices.Count, indices.Count);
-      meshData.SetAllVertices(vertices.ToArray());
-      meshData.SetAllIndices(indices.ToArray());
+      MeshWriteData meshData = cxt.Allocate(mp.vertices.Count, mp.triangles.Count * 3);
+      meshData.SetAllVertices(mp.vertices.ToArray());
+      meshData.SetAllIndices(mp.GetIndices());
     }
     
   }

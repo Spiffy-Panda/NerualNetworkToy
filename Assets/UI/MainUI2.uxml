@@ -1,12 +1,22 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
     <ui:VisualElement style="align-items: flex-start; justify-content: center; height: 100%; width: 100%;">
         <ui:VisualElement style="align-items: flex-start; height: 100%; width: 37.5%; background-color: rgb(171, 171, 171); justify-content: space-between;">
-            <ui:VisualElement style="height: 550px; width: 600px;">
-                <ui:ScrollView>
-                    <ui:Label text="Label" />
-                </ui:ScrollView>
+            <ui:VisualElement style="height: 576.2667px; width: 600px; justify-content: center;">
+                <ui:VisualElement style="height: 32px; flex-direction: row;">
+                    <ui:Button text="None" name="btnTabNoEvolution" style="flex-grow: 1;" />
+                    <ui:Button text="Random Search" name="btnTabRandomSearch" style="flex-grow: 1;" />
+                    <ui:Button text="Selected Parent" name="btnTabSelectedParent" style="flex-grow: 1;" />
+                    <ui:Button text="Random Parent" name="btnTabRandomParent" style="flex-grow: 1;" />
+                </ui:VisualElement>
+                <ui:VisualElement style="align-items: flex-start; bottom: 0; height: 441.3333px; width: 600px; flex-grow: 1;">
+                    <ui:Label name="txtTabContent" />
+                </ui:VisualElement>
+                <ui:VisualElement style="height: 32px; flex-grow: 0; flex-shrink: 1; bottom: 0; flex-direction: row-reverse;">
+                    <ui:Button text="Apply" name="btnApply" style="width: 100px;" />
+                    <ui:Button text="Stop Evolution" name="btnStop" style="width: 100px;" />
+                </ui:VisualElement>
             </ui:VisualElement>
-            <ui:VisualElement style="height: 200px; width: 600px; background-color: rgb(89, 89, 89);" />
+            <ProjectUI.NeuralNetworkDisplay name="NeuralNetworkDisplay" style="justify-content: flex-start; align-items: stretch; width: 100%; height: 200px;" />
             <ui:VisualElement style="height: 215.2px; width: 597.2px; justify-content: center; align-items: stretch; flex-direction: row;">
                 <ProjectUI.ParetoBarycentricMap name="SelectedParent" style="height: 100%; width: 50%;" />
                 <ProjectUI.ParetoBarycentricMap name="PreviewSelection" style="height: 100%; width: 50%;" />

@@ -26,9 +26,7 @@ namespace  ProjectUI {
     }
 
     protected override void OnGenerateVisualContent(MeshGenerationContext cxt) {
-
-      List<Vertex> vertices = new List<Vertex>();
-      List<ushort> indices = new List<ushort>();
+      var mp = new MeshParts();
       List<int3> curTri = new List<int3>();
 
       Color[] clrByDepth = new Color[_subDiv + 1];
@@ -41,7 +39,7 @@ namespace  ProjectUI {
         Vertex vtx = new Vertex();
         vtx.position = (Vector2)T_LsFromNs(TriangleMat[iTriVtx]);
         vtx.tint = clrByDepth[_subDiv]; // it circular
-        vertices.Add(vtx);
+        mp.vertices.Add(vtx);
       }
       curTri.Add(new int3(2,1,0));
 
@@ -49,18 +47,18 @@ namespace  ProjectUI {
       {
         List<int3> nxtTri = new List<int3>();
         foreach (var outerTri in curTri) {
-          int vtxOffset = vertices.Count;
+          int vtxOffset = mp.vertices.Count;
           for (int iTriVtx = 0; iTriVtx < 3; iTriVtx++) {
             var pntLS = Vector3.zero;
             for (int iEdge = 0; iEdge < 3; iEdge++) {
-              pntLS += (iEdge == iTriVtx) ? Vector3.zero: vertices[outerTri[iEdge]].position;
+              pntLS += (iEdge == iTriVtx) ? Vector3.zero: mp.vertices[outerTri[iEdge]].position;
 
             }
             pntLS /= 2;
             Vertex vtx = new Vertex();
             vtx.position = pntLS;
-            vtx.tint = clrByDepth[iDiv]; 
-            vertices.Add(vtx);
+            vtx.tint = clrByDepth[iDiv];
+            mp.vertices.Add(vtx);
           }
 
           for (int iTriVtx = 0; iTriVtx < 3; iTriVtx++) {
@@ -81,18 +79,18 @@ namespace  ProjectUI {
       }
       foreach (var tri in curTri)
       {
-        indices.AddRange(new ushort[] { (ushort)tri.x, (ushort)tri.y, (ushort)tri.z });
+        mp.triangles.Add(tri);
         //indices.AddRange(new ushort[] { (ushort)tri.z, (ushort)tri.y, (ushort)tri.x });
       }
 
       if (GeneBankManager.Inst && GeneBankManager.Inst.GenomeCount > 0) 
-        ApplyGenomeColors(vertices);
+        ApplyGenomeColors(mp.vertices);
 
-      AddPoint(vertices, indices, T_NsFromBs(_value_bs), math.cmin(layout.size / 30), Color.white);
-
-      MeshWriteData meshData = cxt.Allocate(vertices.Count, indices.Count);
-      meshData.SetAllVertices(vertices.ToArray());
-      meshData.SetAllIndices(indices.ToArray());
+      AddPoint(mp, T_NsFromBs(_value_bs), math.cmin(layout.size / 30), Color.white);
+      
+      MeshWriteData meshData = cxt.Allocate(mp.vertices.Count, mp.triangles.Count * 3);
+      meshData.SetAllVertices(mp.vertices.ToArray());
+      meshData.SetAllIndices(mp.GetIndices());
     }
 
     public string[] _metricNames = new[] {

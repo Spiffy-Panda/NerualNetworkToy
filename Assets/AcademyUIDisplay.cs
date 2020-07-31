@@ -66,7 +66,7 @@ public class AcademyUIDisplay : MonoBehaviour {
     StringBuilder sb = new StringBuilder();
     sb.AppendLine($"Move to point Academy");
     sb.AppendLine($"Agents Tested: {AcadStats._generationCount}");
-    sb.AppendLine($"Mode: {(Academy._isMutatingBest? "Mutate Best Agent":"Spawn Random Agents")}");
+
     if (EvalWeights) {
       float3 w = EvalWeights.Weights;
       bool3 favoring = w > 0.5f;

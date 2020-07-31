@@ -195,26 +195,27 @@ public class MoveContext
 public class AcademyMove : MonoBehaviour
 {
   public static TensorCachingAllocator TensorAllocator { get; private set; }
-  private GaussianGenerator _rndg = null;
 
-  public MoveSimParams _simParams = MoveSimParams.GetDefault();
+  public MoveSimParams _simParams => MutationManager.Inst._simParams;
   [Range(0.0000001f, 2)]
   public float _initLearnRate = 2;
   [Range(0.0000001f, .1f)]
   public float _mutaLearnRate = 0.1f;
 
   public bool _isGenerating = true;
-  public bool _isMutatingBest = false;
+
 
   
   public List<MoveContext> _currentGeneration = new List<MoveContext>();
   public int _generationSize = 100;
   private int _curGeneration = -1;
   public event Action _NewGeneration;
+  public Func<float[]> _pickParent;
+
   public void Start()
   {
     TensorAllocator = new TensorCachingAllocator();
-    _rndg = new GaussianGenerator(new Random((uint)UnityEngine.Random.Range(0, int.MaxValue)));
+    _pickParent = MutationManager.Inst.DefaultGenerator;
     Debug.Log(_simParams);
   } 
 
@@ -243,10 +244,7 @@ public class AcademyMove : MonoBehaviour
         _curGeneration++;
         Debug.Log($"Creating Generation: {_curGeneration}");
         for (int iContext = 0; iContext < _generationSize; iContext++) {
-          float[] weights = new float[_simParams.mlpShape.WeightCount];
-          for (int iWeight = 0; iWeight < weights.Length; iWeight++)
-            weights[iWeight] = _rndg.NextFloat1();
-          _currentGeneration.Add(new MoveContext(_simParams,  weights));
+          _currentGeneration.Add(new MoveContext(_simParams,  _pickParent.Invoke()));
         }
         _NewGeneration?.Invoke();
       } else{

@@ -23,7 +23,7 @@ namespace SpiffyLibrary
 
     }
 
-    public void MarkTrigger() {
+    public void MarkToTrigger() {
       if (TimeIntoPeriod < _period)
         TimeIntoPeriod = _period;
     }
