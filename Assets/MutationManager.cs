@@ -3,6 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using SpiffyLibrary;
+using SpiffyLibrary.MachineLearning;
+using Unity.Barracuda;
 using UnityEngine;
 using Random = Unity.Mathematics.Random;
 
@@ -24,9 +26,19 @@ public class MutationManager : MonoBehaviour {
   public MoveSimParams _simParams = MoveSimParams.GetDefault();
   public float _learnRate = 0.1f;
 
+  public float[] GetZeroWeights() {
+    MultiLayerPerception mlp = new MultiLayerPerception(_simParams.mlpShape,Layer.FusedActivation.Relu6);
+    int[] secs = mlp.GetWeightSections();
+    float[] result = new float[secs.Length];
+    for (int iWeight = 0; iWeight < result.Length; iWeight++) {
+      result[iWeight] = (secs[iWeight] % 10 == 2) ? 3 : 0;
+    }
+
+    return result;
+  }
   public static float[] DefaultGeneratorBase(int count, Func<float> nxtFloat)
   {
-    float[] weights = new float[count];
+    float[] weights =(Inst != null)?Inst.GetZeroWeights():new float[count];
     Mutate(weights,nxtFloat);
     return weights;
   }

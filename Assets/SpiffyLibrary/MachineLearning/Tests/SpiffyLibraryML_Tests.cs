@@ -14,6 +14,13 @@ namespace SpiffyLibraryML.Tests
   public class SpiffyLibraryML_Tests
   {
     [Test]
+    public void TestWeightSections() {
+      var shp = new MultiLayerPerception.Shape { hiddenSize = 2,inputSize = 2,outputSize = 2};
+      MultiLayerPerception mlp = new MultiLayerPerception(shp);
+      Debug.Log(string.Join(",",mlp.GetWeightSections()));
+      Debug.Assert(true);
+    }
+    [Test]
     public void ParetoGeneBank()
     {
       StringBuilder sb = new StringBuilder();

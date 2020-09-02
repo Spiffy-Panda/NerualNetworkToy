@@ -14,7 +14,7 @@ namespace  ProjectUI {
     public new class UxmlFactory : UxmlFactory<ParetoBarycentricMap, Image.UxmlTraits>{}
 
     public int Value_ID { get; private set; } = -1;
-    private int _subDiv =5;
+    private int _subDiv =7;
     Dictionary<int, float3> metricVecLookup = new Dictionary<int, float3>();
     int GetClosestGenome(float3 metricBS) => metricVecLookup.Aggregate((kvCur, kvNxt) =>
         (math.dot(kvCur.Value, metricBS) < math.dot(kvNxt.Value, metricBS)) ? kvCur : kvNxt
@@ -98,16 +98,32 @@ namespace  ProjectUI {
       FinalDistanceMetric.MetricName,
       OverRotationMetric.MetricName
     };
+    Dictionary<int, Color> clrLookup = new Dictionary<int, Color>();
+    private const float _invGoldenRatio = 0.618034f;
     public void ApplyGenomeColors(List<Vertex> vertices) {
       var genomes = GeneBankManager.Inst.GetAllGenome();
-      Dictionary<int, Color> clrLookup = new Dictionary<int, Color>();
       metricVecLookup.Clear();
-      float hue = 0;
+      List<int> freeKeys = new List<int>();
+      HashSet<int> curKeys = new HashSet<int>(genomes.Select(gi => gi._id));
+      foreach (var kv in clrLookup) {
+        if(!curKeys.Contains(kv.Key))
+          freeKeys.Add(kv.Key);
+      }
+
       float3 minMetric = float.PositiveInfinity;
       float3 maxMetric = float.NegativeInfinity;
       foreach (var genome in genomes) {
-        clrLookup[genome._id] = Color.HSVToRGB(hue%1f,1,1);
-        hue += 0.618f;
+
+        if (!clrLookup.ContainsKey(genome._id)) {
+          if (freeKeys.Count > 0) {
+            int oldKey = freeKeys[0];
+            clrLookup[genome._id] = clrLookup[oldKey];
+            clrLookup.Remove(oldKey);
+            freeKeys.RemoveAt(0);
+          } else {
+            clrLookup[genome._id] = Color.HSVToRGB((clrLookup.Count* _invGoldenRatio )% 1f,1,1);
+          }
+        }
         float3 metricVector = new float3();
         for (int iMetric = 0; iMetric < _metricNames.Length; iMetric++)
           metricVector[iMetric] = genome._metrics[_metricNames[iMetric]];

@@ -50,7 +50,7 @@ namespace SpiffyLibrary.MachineLearning
     {
       int totIdx = 0;
       Debug.Assert(otherArray.Length == _shape.WeightCount);
-      Array.Copy(otherArray,m_cache,_shape.WeightCount);
+      Array.Copy(otherArray, m_cache, _shape.WeightCount);
       foreach (Layer layer in model.layers)
       {
         for (int i = 0; i < layer.weights.Length; i++)
@@ -59,6 +59,23 @@ namespace SpiffyLibrary.MachineLearning
         }
       }
       Debug.Assert(totIdx == m_cache.Length);
+    }
+    public int[] GetWeightSections()
+    {
+      int totIdx = 0;
+      int[] result = new int[m_cache.Length];
+      int curSection = 0;
+      foreach (Layer layer in model.layers) {
+        curSection += 10;
+        int subSection = 0;
+        foreach (Layer.DataSet ds in layer.datasets) {
+          subSection++;
+          for (int iWeight = 0; iWeight < ds.length; iWeight++)
+            result[totIdx++] = curSection + subSection;
+        }
+      }
+      Debug.Assert(totIdx == m_cache.Length);
+      return result;
     }
     public static Layer MBActivationByName(ref ModelBuilder mb, string name, object input, Layer.FusedActivation activation) {
       switch (activation)

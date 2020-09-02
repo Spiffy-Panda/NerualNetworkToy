@@ -430,7 +430,7 @@ MonoBehaviour:
   _logChangesToConsole: 0
   _preloadData: {fileID: 11400000, guid: 2a837b03129d7874595ecb3237e7f217, type: 2}
   _dbgGenomeCount: -1
-  LoadDataOnStart: 1
+  LoadDataOnStart: 0
 --- !u!4 &410152989
 Transform:
   m_ObjectHideFlags: 0

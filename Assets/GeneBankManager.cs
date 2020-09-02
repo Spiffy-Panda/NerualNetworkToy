@@ -37,6 +37,7 @@ public class GeneBankManager : MonoBehaviour
   public int _dbgGenomeCount = -1;
   public int GenomeCount => _geneBank.GenomeCount;
   public bool LoadDataOnStart = false;
+  public event Action _GenepoolChanged;
   public void Start()
   {
     runTag = $"Run{DateTime.Now:MMMdd_HHmm}";
@@ -49,6 +50,9 @@ public class GeneBankManager : MonoBehaviour
       _geneBank._GeneAddedToPool     += LogAdd;
       _geneBank._GeneRemovedFromPool += LogRemove;
     }
+
+    _geneBank._GeneAddedToPool     += genome => _GenepoolChanged?.Invoke();
+    _geneBank._GeneRemovedFromPool += genome => _GenepoolChanged?.Invoke();
 
     if (_logChangesToConsole)
     {

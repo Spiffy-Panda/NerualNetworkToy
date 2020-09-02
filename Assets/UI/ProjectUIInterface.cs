@@ -69,6 +69,10 @@ namespace ProjectUI
       {
         _parentSelectionMap.Clicked += ParentMapClicked;
       }
+      if(_previewSelectionMap!=null)
+        GeneBankManager.Inst._GenepoolChanged += _previewSelectionMap.MarkDirtyRepaint;
+      if(_parentSelectionMap !=null)
+        GeneBankManager.Inst._GenepoolChanged += _parentSelectionMap.MarkDirtyRepaint;
     }
 
     private void SelectTab(EvolutionTab newTab) {
